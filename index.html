@@ -386,10 +386,10 @@ function koppelBar(){
   const l = S.lists.get(p.l), w = l && l.words.find(x => x.id === p.w);
   if(!w){ S.pending = null; return ''; }
   return `<div class="koppel-spacer"></div><div class="koppelbar" role="region" aria-label="Gebaar koppelen"><div class="inner">
-    <div class="kb-txt"><b>Gebaar voor "${esc(w.w)}" gevonden?</b><span class="muted small">Tik bij het Gebarencentrum op het gebaar, dan op het deel-icoon en Kopieer. Kom terug en tik op Koppel.</span></div>
-    <div class="row"><button class="btn primary" data-a="koppel">Koppel gebaar</button>${S.koppelZelf ? '' : '<button class="btn ghost" data-a="koppel-zelf">Zelf plakken</button>'}<button class="btn ghost" data-a="koppel-stop">Niet nu</button></div>
+    <div class="kb-txt"><b>Gebaar voor "${esc(w.w)}" gevonden?</b><span class="muted small">Kopieer bij het Gebarencentrum de link van het gebaar. Houd dan hieronder je vinger in het vak en kies Plak. De app bewaart het meteen.</span></div>
+    <button class="btn ghost" data-a="koppel-stop">Niet nu</button>
     ${S.koppelFb ? `<p class="kb-fb${S.koppelFb.err ? ' err' : ''}">${esc(S.koppelFb.t)}</p>` : ''}
-    ${S.koppelZelf ? `<form id="f-kb" class="row" style="flex-wrap:nowrap;width:100%"><input type="text" inputmode="url" class="url" id="kb-url" placeholder="Houd je vinger hier en kies Plak" autocomplete="off" autocapitalize="off" aria-label="Link van het gebaar"><button class="btn primary" type="submit">Bewaar</button></form>` : ''}
+    <form id="f-kb" class="row" style="flex-wrap:nowrap;width:100%"><input type="text" inputmode="url" class="url" id="kb-url" data-autosave="1" placeholder="Houd je vinger hier en kies Plak" autocomplete="off" autocapitalize="off" aria-label="Link van het gebaar"><button class="btn primary" type="submit">Bewaar</button></form>
   </div></div>`;
 }
 // Haalt een link uit (geplakte) tekst en bewaart die bij het woord. Geeft een melding terug.
@@ -423,7 +423,8 @@ function linkResult(target, r, resetIds){
     if(S.pending && S.pending.w === target.w) S.koppelFb = {err:true, t:r.t};
     toast(r.t, true);
   }
-  render({reset: r.ok ? (resetIds || []) : []});
+  // Vak altijd leegmaken, zodat een volgende keer plakken niet achter de oude tekst komt.
+  render({reset: resetIds || []});
 }
 let toastTimer = null;
 function toast(t, err){
@@ -643,9 +644,9 @@ function wordRow(w){
           <div class="row"><button type="button" class="btn primary" data-a="paste" data-id="${id}">Koppel gekopieerd gebaar</button>
           <input type="text" id="lk-lab-${id}" maxlength="40" placeholder="Naampje, bijv. zitbank (mag leeg)" autocomplete="off" aria-label="Naampje voor dit gebaar" style="width:auto;flex:1 1 200px"></div>
         </div></div>
-        <details class="handmatig"><summary class="muted small">Link zelf plakken</summary>
+        <details class="handmatig" open><summary class="muted small">Link plakken</summary>
         <form class="form-row" id="f-link" data-id="${id}" style="margin-top:8px">
-          <div class="field"><label for="lk-url-${id}">Link van het gebaar</label><input type="text" inputmode="url" class="url" id="lk-url-${id}" placeholder="https://ow.gebarencentrum.nl/gloss/…" autocomplete="off" autocapitalize="off"></div>
+          <div class="field"><label for="lk-url-${id}">Link van het gebaar</label><input type="text" inputmode="url" class="url" id="lk-url-${id}" data-autosave="1" placeholder="https://ow.gebarencentrum.nl/gloss/…" autocomplete="off" autocapitalize="off"></div>
           <button class="btn" type="submit">Bewaar</button></form></details>
       </div></div>`;
   }
@@ -935,6 +936,12 @@ $app.addEventListener('submit', e => {
   }
 });
 
+// Plakken in een linkvak bewaart meteen, zonder extra knop.
+$app.addEventListener('input', e => {
+  const el = e.target;
+  if(!el.dataset || !el.dataset.autosave) return;
+  if(/https:\/\/\S+/i.test(el.value) && el.form) setTimeout(() => el.form && el.form.requestSubmit(), 0);
+});
 document.addEventListener('keydown', e => {
   if(S.view !== 'quiz' || !S.quiz) return;
   const t = e.target; if(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
