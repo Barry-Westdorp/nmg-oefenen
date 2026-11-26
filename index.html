@@ -144,6 +144,13 @@ input.url{min-width:0}
 .gstep .num{flex:none; width:28px; height:28px; border-radius:50%; background:var(--accent-soft); color:var(--accent); font-weight:800; display:grid; place-items:center; margin-top:9px}
 .gstep > div:not(.form-row){display:flex; flex-direction:column; align-items:flex-start; gap:6px; min-width:0}
 a.alt{color:var(--accent); font-weight:700}
+.handmatig summary{cursor:pointer; padding:4px 0}
+.koppel-spacer{height:150px}
+.koppelbar{position:fixed; left:0; right:0; bottom:0; z-index:20; background:var(--surface); border-top:2px solid var(--accent);
+  box-shadow:0 -6px 24px rgba(20,18,60,.12); padding-bottom:env(safe-area-inset-bottom, 0px)}
+.koppelbar .inner{max-width:860px; margin:0 auto; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); padding-block:14px;
+  display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap}
+.kb-txt{display:flex; flex-direction:column; gap:2px; flex:1 1 280px; min-width:0}
 
 @media (max-width:560px){
   .stats{grid-template-columns:repeat(2, minmax(0,1fr))}
@@ -171,7 +178,7 @@ const HAND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-
 const S = {
   lists:new Map(), view:'home', listId:null,
   newList:false, rename:false, bulk:false, editWord:null, wordFilter:'alle', confirm:null,
-  setup:{sel:new Set(), filter:'alle', max:0}, quiz:null, msg:null, pendingImport:null
+  setup:{sel:new Set(), filter:'alle', max:0}, quiz:null, msg:null, pendingImport:null, pending:null
 };
 
 const mkId = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
@@ -187,6 +194,7 @@ function normWord(w){
 const mijnLink = w => w.links.find(k => k.id === w.mijn) || w.links[0] || null;
 const linkLabel = (w, k) => k.label || (w.links.length > 1 ? 'Gebaar ' + (w.links.indexOf(k) + 1) : 'Gebaar');
 const shortUrl = u => u.replace(/^https:\/\/(www\.)?/i, '').slice(0, 60);
+const zoekAttr = (listId, wordId) => ` data-a="zoek" data-l="${esc(listId)}" data-id="${esc(wordId)}"`;
 const ext = (url, cls, html, extra) => `<a class="${cls}" href="${esc(url)}" target="_blank" rel="noopener"${extra || ''}>${html}</a>`;
 const normList = (id, v) => ({id:String(id), name:String(v.name||'Naamloze lijst'), created:+v.created||0, words:Array.isArray(v.words) ? v.words.map(normWord) : []});
 function status(w){ if(w.goed + w.fout === 0) return 'nieuw'; if(w.reeks >= 3) return 'gekend'; if(w.reeks >= 1) return 'bijna'; return 'lastig'; }
@@ -251,11 +259,38 @@ function render(opts){
   $app.querySelectorAll('input[id], textarea[id]').forEach(el => { keep[el.id] = el.value; });
   const act = document.activeElement;
   if(act && act.id && $app.contains(act)){ focusId = act.id; try{ sS = act.selectionStart; sE = act.selectionEnd; }catch(e){} }
-  $app.innerHTML = '<div class="wrap">' + view() + '</div>';
+  $app.innerHTML = '<div class="wrap">' + view() + '</div>' + koppelBar();
   const reset = new Set(opts.reset || []);
   for(const k in keep){ if(reset.has(k)) continue; const el = document.getElementById(k); if(el) el.value = keep[k]; }
   const f = opts.focus || focusId;
   if(f){ const el = document.getElementById(f); if(el){ el.focus({preventScroll:!opts.focus}); if(!opts.focus && sS != null){ try{ el.setSelectionRange(sS, sE); }catch(e){} } } }
+}
+// Balk onderin nadat je bij het Gebarencentrum bent gaan zoeken: één tik koppelt de gekopieerde link.
+function koppelBar(){
+  const p = S.pending; if(!p) return '';
+  const l = S.lists.get(p.l), w = l && l.words.find(x => x.id === p.w);
+  if(!w){ S.pending = null; return ''; }
+  return `<div class="koppel-spacer"></div><div class="koppelbar" role="region" aria-label="Gebaar koppelen"><div class="inner">
+    <div class="kb-txt"><b>Gebaar voor "${esc(w.w)}" gevonden?</b><span class="muted small">Tik bij het Gebarencentrum op het gebaar, dan op het deel-icoon en Kopieer. Kom terug en tik op Koppel.</span></div>
+    <div class="row"><button class="btn primary" data-a="koppel">Koppel gebaar</button><button class="btn ghost" data-a="koppel-stop">Niet nu</button></div>
+  </div></div>`;
+}
+// Haalt een link uit (geplakte) tekst en bewaart die bij het woord. Geeft een melding terug.
+function addLink(listId, wordId, text, label){
+  const l = S.lists.get(listId), w = l && l.words.find(x => x.id === wordId);
+  if(!w) return {ok:false, t:'Dit woord bestaat niet meer.'};
+  const m = String(text || '').match(/https:\/\/[^\s"'<>]+/i);
+  if(!m) return {ok:false, t:'Er staat geen link op je klembord. Tik bij het Gebarencentrum op het gebaar, dan op het deel-icoon en Kopieer.'};
+  const url = m[0];
+  if(w.links.some(k => k.url === url)) return {ok:false, t:'Dit gebaar staat al bij "' + w.w + '".'};
+  if(/gebarencentrum\.nl/i.test(url) && !/\/gloss\//i.test(url)) return {ok:false, t:'Dit is nog de zoekpagina. Tik eerst op het gebaar zelf en kopieer dan de link.'};
+  const k = normLink({url, label:String(label || '').trim()});
+  w.links.push(k); if(!w.mijn) w.mijn = k.id;
+  save();
+  return {ok:true, t:'Gebaar gekoppeld aan "' + w.w + '".'};
+}
+async function readClipboard(){
+  try{ return await navigator.clipboard.readText(); }catch(e){ return null; }
 }
 function msgHtml(){
   return S.msg ? `<div class="note${S.msg.err?' err':''}" role="status"><span>${esc(S.msg.t)}</span><button class="btn sm ghost" data-a="dismiss">Sluiten</button></div>` : '';
@@ -387,12 +422,16 @@ function wordRow(w){
         <h3>Voorbeeld van het gebaar</h3>
         ${links}
         ${w.links.length > 1 ? '<p class="muted small">Tik op de ster bij het gebaar dat jij leert. Dat gebaar zie je tijdens het oefenen als eerste.</p>' : ''}
-        <div class="gstep"><span class="num">1</span><div>${ext(zoekUrl(w.w), 'btn', 'Zoek "' + esc(w.w) + '" bij het Gebarencentrum')}
-          <p class="muted small">Tik daar op het goede gebaar en kopieer de link (deel-icoon, dan Kopieer).</p></div></div>
-        <form class="gstep" id="f-link" data-id="${id}"><span class="num">2</span><div class="form-row" style="flex:1;min-width:0">
-          <div class="field"><label for="lk-url-${id}">Plak de link hier</label><div class="row" style="flex-wrap:nowrap"><input type="text" inputmode="url" class="url" id="lk-url-${id}" placeholder="https://ow.gebarencentrum.nl/gloss/…" autocomplete="off" autocapitalize="off"><button type="button" class="btn" data-a="paste" data-id="${id}">Plak</button></div></div>
-          <div class="field" style="flex-basis:150px"><label for="lk-lab-${id}">Naampje <span class="muted">(mag leeg)</span></label><input type="text" id="lk-lab-${id}" maxlength="40" placeholder="Bijv. zitbank" autocomplete="off"></div>
-          <button class="btn primary" type="submit">Bewaar gebaar</button></div></form>
+        <div class="gstep"><span class="num">1</span><div>${ext(zoekUrl(w.w), 'btn', 'Zoek "' + esc(w.w) + '" bij het Gebarencentrum', zoekAttr(S.listId, w.id))}
+          <p class="muted small">Tik daar op het goede gebaar, dan op het deel-icoon en Kopieer.</p></div></div>
+        <div class="gstep"><span class="num">2</span><div>
+          <div class="row"><button type="button" class="btn primary" data-a="paste" data-id="${id}">Koppel gekopieerd gebaar</button>
+          <input type="text" id="lk-lab-${id}" maxlength="40" placeholder="Naampje, bijv. zitbank (mag leeg)" autocomplete="off" aria-label="Naampje voor dit gebaar" style="width:auto;flex:1 1 200px"></div>
+        </div></div>
+        <details class="handmatig"><summary class="muted small">Link zelf plakken</summary>
+        <form class="form-row" id="f-link" data-id="${id}" style="margin-top:8px">
+          <div class="field"><label for="lk-url-${id}">Link van het gebaar</label><input type="text" inputmode="url" class="url" id="lk-url-${id}" placeholder="https://ow.gebarencentrum.nl/gloss/…" autocomplete="off" autocapitalize="off"></div>
+          <button class="btn" type="submit">Bewaar</button></form></details>
       </div></div>`;
   }
   if(S.confirm === 'word:' + w.id){
@@ -401,7 +440,7 @@ function wordRow(w){
   const mk = mijnLink(w);
   const gebaar = mk
     ? ext(mk.url, 'btn sm', '▶ Gebaar' + (w.links.length > 1 ? ' <span class="n">+' + (w.links.length - 1) + '</span>' : ''), ` aria-label="Bekijk het gebaar voor ${esc(w.w)}"`)
-    : ext(zoekUrl(w.w), 'btn sm dashed', 'Zoek gebaar', ` data-a="zoek" data-id="${esc(w.id)}"`);
+    : ext(zoekUrl(w.w), 'btn sm dashed', 'Zoek gebaar', zoekAttr(S.listId, w.id));
   return `<div class="word"><div class="txt"><b>${esc(w.w)}</b>${w.g ? `<p>${esc(w.g)}</p>` : ''}${mk && w.links.length > 1 ? `<p>Mijn gebaar: ${esc(linkLabel(w, mk))}</p>` : ''}</div>
     ${gebaar}
     <span class="tag t-${s}">${ST[s]}</span>
@@ -455,7 +494,7 @@ function viewQuiz(){
       ${w.g && q.revealed ? `<div class="uitleg">${esc(w.g)}</div>` : ''}
       <div class="row" style="justify-content:center">
         ${w.g && !q.revealed ? `<button class="btn" data-a="reveal">Toon mijn uitleg</button>` : ''}
-        ${mijnLink(w) ? ext(mijnLink(w).url, 'btn', '▶ Bekijk voorbeeld') : ext(zoekUrl(w.w), 'btn ghost', 'Zoek voorbeeld')}
+        ${mijnLink(w) ? ext(mijnLink(w).url, 'btn', '▶ Bekijk voorbeeld') : ext(zoekUrl(w.w), 'btn ghost', 'Zoek voorbeeld', zoekAttr(it.l, w.id))}
       </div>
       ${w.links.length > 1 ? `<p class="muted small">Andere gebaren: ${w.links.filter(k => k !== mijnLink(w)).map(k => ext(k.url, 'alt', esc(linkLabel(w, k)))).join(' · ')}</p>` : ''}
     </div>
@@ -474,7 +513,7 @@ function viewDone(){
   if(missed.length){
     h += `<section class="panel"><h2>Deze woorden waren lastig</h2><div class="missed">` +
       missed.sort((a,b)=>b.n-a.n).map(x => { const w = findWord(x.it), mk = mijnLink(w);
-        return `<div><span><b>${esc(w.w)}</b> <span class="muted small">${x.n} keer niet geweten</span></span>${mk ? ext(mk.url, 'btn sm', '▶ Gebaar') : ext(zoekUrl(w.w), 'btn sm ghost', 'Zoek gebaar')}</div>`; }).join('') + `</div></section>`;
+        return `<div><span><b>${esc(w.w)}</b> <span class="muted small">${x.n} keer niet geweten</span></span>${mk ? ext(mk.url, 'btn sm', '▶ Gebaar') : ext(zoekUrl(w.w), 'btn sm ghost', 'Zoek gebaar', zoekAttr(x.it.l, w.id))}</div>`; }).join('') + `</div></section>`;
   }
   h += `<div class="row">${missed.length ? '<button class="btn primary big" data-a="again-missed">Oefen de lastige woorden</button>' : ''}
     <button class="btn${missed.length ? '' : ' primary'} big" data-a="again">Nog een ronde</button><button class="btn big" data-a="home">Naar lijsten</button></div>`;
@@ -553,15 +592,27 @@ $app.addEventListener('click', e => {
     case 'wfilter': S.wordFilter = v; break;
     case 'edit': S.editWord = id; S.confirm = null; render({focus:'ew-' + id}); return;
     case 'edit-cancel': S.editWord = null; break;
-    case 'zoek': // de link opent zelf het Gebarencentrum; hier klapt het woord open zodat plakken klaarstaat
-      S.editWord = id; S.confirm = null; setTimeout(() => render(), 0); return;
-    case 'paste': {
-      const inp = document.getElementById('lk-url-' + id);
-      if(!inp) return;
-      (async () => {
-        try{ const t = await navigator.clipboard.readText(); if(t) inp.value = t.trim(); inp.focus(); }
-        catch(err){ inp.focus(); S.msg = {t:'Automatisch plakken lukt hier niet. Houd je vinger in het vak en kies Plak.', err:true}; render({focus:'lk-url-' + id}); }
-      })();
+    case 'zoek': // de link opent zelf het Gebarencentrum; de app zet de koppelbalk klaar voor als je terugkomt
+      S.pending = {l:b.dataset.l || S.listId, w:id};
+      if(S.view === 'list'){ S.editWord = id; S.confirm = null; }
+      setTimeout(() => render(), 0); return;
+    case 'koppel-stop': S.pending = null; break;
+    case 'koppel': case 'paste': {
+      const target = a === 'koppel' ? S.pending : {l:S.listId, w:id};
+      if(!target) break;
+      const labEl = a === 'paste' ? document.getElementById('lk-lab-' + id) : null;
+      readClipboard().then(t => {
+        if(t === null){
+          // Geen toegang tot het klembord: laat de gebruiker zelf plakken.
+          S.msg = {t:'De app kan je klembord niet lezen. Open het woord, kies "Link zelf plakken" en plak de link daar.', err:true};
+          if(S.view === 'list'){ S.editWord = target.w; }
+          render(); return;
+        }
+        const r = addLink(target.l, target.w, t, labEl ? labEl.value : '');
+        S.msg = {t:r.t, err:!r.ok};
+        if(r.ok && S.pending && S.pending.w === target.w) S.pending = null;
+        render({reset: r.ok && labEl ? [labEl.id] : []});
+      });
       return;
     }
     case 'mijn': case 'del-link': {
@@ -633,15 +684,11 @@ $app.addEventListener('submit', e => {
   if(f.id === 'f-link'){
     const wid = f.dataset.id, w = l.words.find(x => x.id === wid); if(!w) return;
     const urlEl = document.getElementById('lk-url-' + wid), labEl = document.getElementById('lk-lab-' + wid);
-    // Gedeelde tekst kan ook een titel bevatten: pak alleen de link eruit.
-    const m = urlEl.value.match(/https:\/\/[^\s"'<>]+/i);
-    if(!m){ S.msg = {t:'Plak een link die begint met https://', err:true}; render({focus:'lk-url-' + wid}); return; }
-    const url = m[0];
-    if(w.links.some(k => k.url === url)){ S.msg = {t:'Dit gebaar staat al bij "' + w.w + '".', err:true}; render({reset:['lk-url-' + wid]}); return; }
-    const k = normLink({url, label:labEl.value.trim()});
-    w.links.push(k); if(!w.mijn) w.mijn = k.id;
-    save(); S.msg = null;
-    render({reset:['lk-url-' + wid, 'lk-lab-' + wid]}); return;
+    const r = addLink(l.id, wid, urlEl.value, labEl ? labEl.value : '');
+    if(!r.ok && !/https:\/\//i.test(urlEl.value)) r.t = 'Plak een link die begint met https://';
+    S.msg = {t:r.t, err:!r.ok};
+    if(r.ok && S.pending && S.pending.w === wid) S.pending = null;
+    render({reset: r.ok ? ['lk-url-' + wid, 'lk-lab-' + wid] : []}); return;
   }
   if(f.id === 'f-edit'){
     const wid = f.dataset.id, w = l.words.find(x => x.id === wid); if(!w) return;
