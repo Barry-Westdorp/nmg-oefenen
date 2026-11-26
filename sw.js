@@ -1,6 +1,6 @@
 // Bewaart de app zelf op het apparaat zodat hij ook zonder internet werkt.
 // Je lijsten staan hier niet in; die staan in de opslag van de browser.
-const CACHE = 'nmg-oefenen-v1';
+const CACHE = 'nmg-oefenen-v2';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

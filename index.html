@@ -125,7 +125,25 @@ textarea{min-height:150px; resize:vertical}
 .keys{text-align:center; font-size:.85rem; color:var(--muted)}
 kbd{font-family:inherit; font-weight:700; border:1px solid var(--line); border-bottom-width:2px; border-radius:6px; padding:0 6px; background:var(--surface)}
 .missed{display:flex; flex-direction:column; gap:6px}
-.missed div{display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-top:1px solid var(--line)}
+.missed > div{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 0; border-top:1px solid var(--line)}
+
+/* Gebaren koppelen */
+input.url{min-width:0}
+.btn.dashed{border-style:dashed; color:var(--accent)}
+.btn .n{font-variant-numeric:tabular-nums; opacity:.75; font-weight:600}
+.gsec{width:100%; display:flex; flex-direction:column; gap:12px; border-top:1px dashed var(--line); padding-top:14px}
+.gsec h3{font-size:1.05rem}
+.glinks{display:flex; flex-direction:column; gap:8px}
+.glink{display:flex; align-items:center; gap:10px; background:var(--surface); border:1.5px solid var(--line); border-radius:12px; padding:8px 10px; flex-wrap:wrap}
+.glink.mine{border-color:var(--good)}
+.glink .txt{flex:1 1 140px; min-width:0}
+.glink .txt p{color:var(--muted); font-size:.85rem; overflow-wrap:anywhere}
+.pick{font:inherit; font-size:1.4rem; line-height:1; width:42px; height:42px; border-radius:10px; border:0; background:transparent; color:var(--warn); cursor:pointer; flex:none}
+.pick:focus-visible{outline:3px solid var(--hand)}
+.gstep{display:flex; gap:12px; align-items:flex-start}
+.gstep .num{flex:none; width:28px; height:28px; border-radius:50%; background:var(--accent-soft); color:var(--accent); font-weight:800; display:grid; place-items:center; margin-top:9px}
+.gstep > div:not(.form-row){display:flex; flex-direction:column; align-items:flex-start; gap:6px; min-width:0}
+a.alt{color:var(--accent); font-weight:700}
 
 @media (max-width:560px){
   .stats{grid-template-columns:repeat(2, minmax(0,1fr))}
@@ -158,7 +176,18 @@ const S = {
 
 const mkId = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const normWord = w => ({id:String(w.id||mkId()), w:String(w.w||''), g:String(w.g||''), goed:+w.goed||0, fout:+w.fout||0, reeks:+w.reeks||0, laatst:w.laatst||null});
+const GC = 'https://ow.gebarencentrum.nl';
+const zoekUrl = w => GC + '/search?q=' + encodeURIComponent(String(w).trim().toLowerCase());
+const normLink = k => ({id:String(k.id||mkId()), url:String(k.url||''), label:String(k.label||'')});
+function normWord(w){
+  const links = Array.isArray(w.links) ? w.links.map(normLink).filter(k => /^https:\/\//i.test(k.url)) : [];
+  const mijn = links.some(k => k.id === w.mijn) ? String(w.mijn) : (links[0] ? links[0].id : null);
+  return {id:String(w.id||mkId()), w:String(w.w||''), g:String(w.g||''), goed:+w.goed||0, fout:+w.fout||0, reeks:+w.reeks||0, laatst:w.laatst||null, links, mijn};
+}
+const mijnLink = w => w.links.find(k => k.id === w.mijn) || w.links[0] || null;
+const linkLabel = (w, k) => k.label || (w.links.length > 1 ? 'Gebaar ' + (w.links.indexOf(k) + 1) : 'Gebaar');
+const shortUrl = u => u.replace(/^https:\/\/(www\.)?/i, '').slice(0, 60);
+const ext = (url, cls, html, extra) => `<a class="${cls}" href="${esc(url)}" target="_blank" rel="noopener"${extra || ''}>${html}</a>`;
 const normList = (id, v) => ({id:String(id), name:String(v.name||'Naamloze lijst'), created:+v.created||0, words:Array.isArray(v.words) ? v.words.map(normWord) : []});
 function status(w){ if(w.goed + w.fout === 0) return 'nieuw'; if(w.reeks >= 3) return 'gekend'; if(w.reeks >= 1) return 'bijna'; return 'lastig'; }
 function counts(words){ const c={gekend:0,bijna:0,lastig:0,nieuw:0}; for(const w of words) c[status(w)]++; return c; }
@@ -337,15 +366,44 @@ function viewList(){
 function wordRow(w){
   const s = status(w);
   if(S.editWord === w.id){
-    return `<form class="word editing" id="f-edit" data-id="${esc(w.id)}" style="align-items:flex-end">
-      <div class="field"><label for="ew-${esc(w.id)}">Woord</label><input type="text" id="ew-${esc(w.id)}" value="${esc(w.w)}" maxlength="120" autocomplete="off"></div>
-      <div class="field" style="flex-basis:240px"><label for="eg-${esc(w.id)}">Hoe gaat het gebaar?</label><input type="text" id="eg-${esc(w.id)}" value="${esc(w.g)}" maxlength="400" autocomplete="off"></div>
-      <div class="row"><button class="btn primary sm" type="submit">Opslaan</button><button class="btn ghost sm" type="button" data-a="edit-cancel">Annuleren</button></div></form>`;
+    const id = esc(w.id);
+    const links = w.links.length
+      ? `<div class="glinks">` + w.links.map(k => {
+          const mine = k.id === w.mijn;
+          return `<div class="glink${mine ? ' mine' : ''}">
+            <button type="button" class="pick" data-a="mijn" data-id="${esc(k.id)}" aria-pressed="${mine}" aria-label="Maak ${esc(linkLabel(w, k))} mijn gebaar">${mine ? '★' : '☆'}</button>
+            <div class="txt"><b>${esc(linkLabel(w, k))}</b>${mine && w.links.length > 1 ? ' <span class="tag t-gekend">Mijn gebaar</span>' : ''}<p>${esc(shortUrl(k.url))}</p></div>
+            ${ext(k.url, 'btn sm', '▶ Bekijk')}
+            <button type="button" class="btn ghost sm" data-a="del-link" data-id="${esc(k.id)}">Verwijder</button></div>`;
+        }).join('') + `</div>`
+      : '';
+    return `<div class="word editing">
+      <form class="form-row" id="f-edit" data-id="${id}" style="width:100%">
+        <div class="field"><label for="ew-${id}">Woord</label><input type="text" id="ew-${id}" value="${esc(w.w)}" maxlength="120" autocomplete="off"></div>
+        <div class="field" style="flex-basis:240px"><label for="eg-${id}">Hoe gaat het gebaar? <span class="muted">(eigen uitleg)</span></label><input type="text" id="eg-${id}" value="${esc(w.g)}" maxlength="400" autocomplete="off"></div>
+        <div class="row"><button class="btn primary sm" type="submit">Opslaan</button><button class="btn ghost sm" type="button" data-a="edit-cancel">Sluiten</button></div>
+      </form>
+      <div class="gsec">
+        <h3>Voorbeeld van het gebaar</h3>
+        ${links}
+        ${w.links.length > 1 ? '<p class="muted small">Tik op de ster bij het gebaar dat jij leert. Dat gebaar zie je tijdens het oefenen als eerste.</p>' : ''}
+        <div class="gstep"><span class="num">1</span><div>${ext(zoekUrl(w.w), 'btn', 'Zoek "' + esc(w.w) + '" bij het Gebarencentrum')}
+          <p class="muted small">Tik daar op het goede gebaar en kopieer de link (deel-icoon, dan Kopieer).</p></div></div>
+        <form class="gstep" id="f-link" data-id="${id}"><span class="num">2</span><div class="form-row" style="flex:1;min-width:0">
+          <div class="field"><label for="lk-url-${id}">Plak de link hier</label><div class="row" style="flex-wrap:nowrap"><input type="text" inputmode="url" class="url" id="lk-url-${id}" placeholder="https://ow.gebarencentrum.nl/gloss/…" autocomplete="off" autocapitalize="off"><button type="button" class="btn" data-a="paste" data-id="${id}">Plak</button></div></div>
+          <div class="field" style="flex-basis:150px"><label for="lk-lab-${id}">Naampje <span class="muted">(mag leeg)</span></label><input type="text" id="lk-lab-${id}" maxlength="40" placeholder="Bijv. zitbank" autocomplete="off"></div>
+          <button class="btn primary" type="submit">Bewaar gebaar</button></div></form>
+      </div></div>`;
   }
   if(S.confirm === 'word:' + w.id){
     return `<div class="word confirm" style="border-radius:0"><span>"${esc(w.w)}" verwijderen?</span><div class="row"><button class="btn sm danger solid" data-a="confirm-yes">Verwijderen</button><button class="btn sm" data-a="confirm-no">Nee</button></div></div>`;
   }
-  return `<div class="word"><div class="txt"><b>${esc(w.w)}</b>${w.g ? `<p>${esc(w.g)}</p>` : ''}</div>
+  const mk = mijnLink(w);
+  const gebaar = mk
+    ? ext(mk.url, 'btn sm', '▶ Gebaar' + (w.links.length > 1 ? ' <span class="n">+' + (w.links.length - 1) + '</span>' : ''), ` aria-label="Bekijk het gebaar voor ${esc(w.w)}"`)
+    : ext(zoekUrl(w.w), 'btn sm dashed', 'Zoek gebaar', ` data-a="zoek" data-id="${esc(w.id)}"`);
+  return `<div class="word"><div class="txt"><b>${esc(w.w)}</b>${w.g ? `<p>${esc(w.g)}</p>` : ''}${mk && w.links.length > 1 ? `<p>Mijn gebaar: ${esc(linkLabel(w, mk))}</p>` : ''}</div>
+    ${gebaar}
     <span class="tag t-${s}">${ST[s]}</span>
     <span class="score" title="Aantal keer goed en fout">✓ ${w.goed} · ✗ ${w.fout}</span>
     <div class="row" style="gap:4px"><button class="btn ghost sm" data-a="edit" data-id="${esc(w.id)}">Wijzig</button><button class="btn ghost sm" data-a="ask-word" data-id="${esc(w.id)}" aria-label="Verwijder ${esc(w.w)}">Verwijder</button></div></div>`;
@@ -394,7 +452,12 @@ function viewQuiz(){
     <div class="flash${again ? ' again' : ''}" aria-live="polite">
       <div class="from"><span class="eyebrow">${esc(l ? l.name : '')}</span>${again ? '<span class="tag t-lastig">Nog een keer</span>' : ''}</div>
       <div class="wordbig">${esc(w.w)}</div>
-      ${w.g ? (q.revealed ? `<div class="uitleg">${esc(w.g)}</div>` : `<button class="btn" data-a="reveal">Toon hoe het gebaar gaat</button>`) : ''}
+      ${w.g && q.revealed ? `<div class="uitleg">${esc(w.g)}</div>` : ''}
+      <div class="row" style="justify-content:center">
+        ${w.g && !q.revealed ? `<button class="btn" data-a="reveal">Toon mijn uitleg</button>` : ''}
+        ${mijnLink(w) ? ext(mijnLink(w).url, 'btn', '▶ Bekijk voorbeeld') : ext(zoekUrl(w.w), 'btn ghost', 'Zoek voorbeeld')}
+      </div>
+      ${w.links.length > 1 ? `<p class="muted small">Andere gebaren: ${w.links.filter(k => k !== mijnLink(w)).map(k => ext(k.url, 'alt', esc(linkLabel(w, k)))).join(' · ')}</p>` : ''}
     </div>
     <div class="answer"><button class="btn no" data-a="no">Weet ik niet</button><button class="btn yes" data-a="yes">Weet ik</button></div>
     <p class="keys">Toetsen: <kbd>←</kbd> weet ik niet · <kbd>→</kbd> weet ik${w.g ? ' · <kbd>spatie</kbd> toon gebaar' : ''}</p></div>`;
@@ -410,7 +473,8 @@ function viewDone(){
     <div class="stat"><b>${q.done}</b><span>van ${q.total} gekend</span></div></section>`;
   if(missed.length){
     h += `<section class="panel"><h2>Deze woorden waren lastig</h2><div class="missed">` +
-      missed.sort((a,b)=>b.n-a.n).map(x => `<div><b>${esc(findWord(x.it).w)}</b><span class="muted small">${x.n} keer niet geweten</span></div>`).join('') + `</div></section>`;
+      missed.sort((a,b)=>b.n-a.n).map(x => { const w = findWord(x.it), mk = mijnLink(w);
+        return `<div><span><b>${esc(w.w)}</b> <span class="muted small">${x.n} keer niet geweten</span></span>${mk ? ext(mk.url, 'btn sm', '▶ Gebaar') : ext(zoekUrl(w.w), 'btn sm ghost', 'Zoek gebaar')}</div>`; }).join('') + `</div></section>`;
   }
   h += `<div class="row">${missed.length ? '<button class="btn primary big" data-a="again-missed">Oefen de lastige woorden</button>' : ''}
     <button class="btn${missed.length ? '' : ' primary'} big" data-a="again">Nog een ronde</button><button class="btn big" data-a="home">Naar lijsten</button></div>`;
@@ -489,6 +553,23 @@ $app.addEventListener('click', e => {
     case 'wfilter': S.wordFilter = v; break;
     case 'edit': S.editWord = id; S.confirm = null; render({focus:'ew-' + id}); return;
     case 'edit-cancel': S.editWord = null; break;
+    case 'zoek': // de link opent zelf het Gebarencentrum; hier klapt het woord open zodat plakken klaarstaat
+      S.editWord = id; S.confirm = null; setTimeout(() => render(), 0); return;
+    case 'paste': {
+      const inp = document.getElementById('lk-url-' + id);
+      if(!inp) return;
+      (async () => {
+        try{ const t = await navigator.clipboard.readText(); if(t) inp.value = t.trim(); inp.focus(); }
+        catch(err){ inp.focus(); S.msg = {t:'Automatisch plakken lukt hier niet. Houd je vinger in het vak en kies Plak.', err:true}; render({focus:'lk-url-' + id}); }
+      })();
+      return;
+    }
+    case 'mijn': case 'del-link': {
+      const w = l && l.words.find(x => x.id === S.editWord); if(!w) break;
+      if(a === 'mijn') w.mijn = id;
+      else { w.links = w.links.filter(k => k.id !== id); if(w.mijn === id) w.mijn = w.links[0] ? w.links[0].id : null; }
+      save(); break;
+    }
     case 'ask-word': S.confirm = 'word:' + id; S.editWord = null; break;
     case 'ask-reset': S.confirm = 'reset'; break;
     case 'ask-list': S.confirm = 'list'; break;
@@ -548,6 +629,19 @@ $app.addEventListener('submit', e => {
     const r = addWords(l, items);
     S.msg = {t: plural(r.added,'woord','woorden') + ' toegevoegd' + (r.skipped ? ', ' + r.skipped + ' stond' + (r.skipped===1?'':'en') + ' er al in' : '') + '.'};
     S.bulk = false; render({reset:['bk-text']}); return;
+  }
+  if(f.id === 'f-link'){
+    const wid = f.dataset.id, w = l.words.find(x => x.id === wid); if(!w) return;
+    const urlEl = document.getElementById('lk-url-' + wid), labEl = document.getElementById('lk-lab-' + wid);
+    // Gedeelde tekst kan ook een titel bevatten: pak alleen de link eruit.
+    const m = urlEl.value.match(/https:\/\/[^\s"'<>]+/i);
+    if(!m){ S.msg = {t:'Plak een link die begint met https://', err:true}; render({focus:'lk-url-' + wid}); return; }
+    const url = m[0];
+    if(w.links.some(k => k.url === url)){ S.msg = {t:'Dit gebaar staat al bij "' + w.w + '".', err:true}; render({reset:['lk-url-' + wid]}); return; }
+    const k = normLink({url, label:labEl.value.trim()});
+    w.links.push(k); if(!w.mijn) w.mijn = k.id;
+    save(); S.msg = null;
+    render({reset:['lk-url-' + wid, 'lk-lab-' + wid]}); return;
   }
   if(f.id === 'f-edit'){
     const wid = f.dataset.id, w = l.words.find(x => x.id === wid); if(!w) return;
