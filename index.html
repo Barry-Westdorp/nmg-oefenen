@@ -223,6 +223,7 @@ const $app = document.getElementById('app');
 const $file = document.getElementById('backup-file');
 const LS = 'nmg-oefenen-v1';
 const LS_BACKUP = 'nmg-oefenen-laatste-backup';
+const APP_VERSIE = '9';
 const LS_SET = 'nmg-oefenen-instellingen';
 const LS_KOPPEL = 'nmg-oefenen-koppel';
 const LS_DAGEN = 'nmg-oefenen-dagen';
@@ -533,7 +534,8 @@ function pipCard(info){
 function settingsPanel(){
   return `<section class="panel"><h2>Instellingen</h2>
     <div><p><b>Opfrissen na</b></p><p class="muted small">Een woord dat je kent, wordt oranje als je het zo lang niet hebt geoefend. Zo zie je wat je moet herhalen om alles groen te houden.</p></div>
-    <div class="chips">${HERHAAL.map(([d, t]) => `<button class="chip" data-a="herhaal" data-v="${d}" aria-pressed="${SET.herhaal === d}">${t}</button>`).join('')}</div></section>`;
+    <div class="chips">${HERHAAL.map(([d, t]) => `<button class="chip" data-a="herhaal" data-v="${d}" aria-pressed="${SET.herhaal === d}">${t}</button>`).join('')}</div>
+    <p class="muted small">Versie ${APP_VERSIE}</p></section>`;
 }
 function listCard(l){
   const lc = counts(l.words), d = daysSince(lastPracticed(l));
@@ -956,7 +958,10 @@ render();
 
 // Offline werken: de app zelf wordt op het apparaat bewaard.
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    // Kijk bij terugkeren naar de app of er een nieuwe versie is.
+    document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') reg.update().catch(() => {}); });
+  }).catch(() => {});
 }
 })();
 </script>
