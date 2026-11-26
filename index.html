@@ -172,6 +172,25 @@ a.alt{color:var(--accent); font-weight:700}
 .card-btn.paused{opacity:.6; border-style:dashed}
 .card-btn .tag{flex:none}
 
+/* Melding en koppelbalk */
+.toast{position:fixed; z-index:30; left:50%; transform:translateX(-50%); top:calc(env(safe-area-inset-top, 0px) + 12px); max-width:min(92vw, 560px);
+  background:var(--good); color:#fff; font-weight:700; padding:12px 18px; border-radius:14px; box-shadow:0 8px 24px rgba(20,18,60,.25)}
+.toast.err{background:var(--bad)}
+.kb-fb{width:100%; font-weight:700; color:var(--good)}
+.kb-fb.err{color:var(--bad)}
+
+/* Dagen op rij */
+.streak{display:flex; flex-direction:column; gap:8px}
+.flame{width:22px; height:22px; color:var(--new); flex:none}
+.streak.on .flame{color:var(--fris)}
+.streak.risk .flame{animation:pip-bob 1.2s ease-in-out infinite}
+.week{display:flex; gap:6px; flex-wrap:wrap}
+.wd{display:flex; flex-direction:column; align-items:center; gap:2px; font-size:.72rem; color:var(--muted); min-width:34px}
+.wd i{font-style:normal; width:28px; height:28px; border-radius:50%; border:2px solid var(--line); display:grid; place-items:center; font-size:.85rem; font-weight:800; color:#fff}
+.wd.ok i{background:var(--fris); border-color:var(--fris)}
+.wd.today i{border-style:dashed; border-color:var(--accent)}
+.wd.today.ok i{border-style:solid; border-color:var(--fris)}
+
 /* Aan/uit-schakelaar */
 .switch{flex:none; width:58px; height:34px; border-radius:99px; border:0; background:var(--new); position:relative; cursor:pointer; padding:0}
 .switch span{position:absolute; top:3px; left:3px; width:28px; height:28px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:transform .2s}
@@ -205,11 +224,16 @@ const $file = document.getElementById('backup-file');
 const LS = 'nmg-oefenen-v1';
 const LS_BACKUP = 'nmg-oefenen-laatste-backup';
 const LS_SET = 'nmg-oefenen-instellingen';
+const LS_KOPPEL = 'nmg-oefenen-koppel';
+const LS_DAGEN = 'nmg-oefenen-dagen';
 const ST = {gekend:'Ken ik', opfrissen:'Opfrissen', bijna:'Bijna', lastig:'Lastig', nieuw:'Nieuw'};
 const ORDER = ['gekend','opfrissen','bijna','lastig','nieuw'];
 const HERHAAL = [[7,'1 week'],[14,'2 weken'],[30,'1 maand'],[90,'3 maanden'],[0,'Nooit']];
 const DAY = 86400000;
 const SET = {herhaal:14};
+let DAGEN = {};           // 'jjjj-mm-dd' -> aantal beantwoorde kaarten die dag
+const DAG_MIN = 5;        // zoveel kaarten per dag en de dag telt mee voor je reeks
+const MIJLPALEN = [3, 7, 14, 21, 30, 50, 75, 100, 150, 200, 365];
 const HAND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent-ink)" aria-hidden="true"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/></svg>';
 
 const S = {
@@ -246,6 +270,45 @@ function counts(words){ const c={gekend:0,opfrissen:0,bijna:0,lastig:0,nieuw:0};
 const lastPracticed = l => l.words.reduce((m, w) => (w.laatst && (!m || w.laatst > m)) ? w.laatst : m, null);
 const activeLists = () => sortedLists().filter(l => l.actief);
 const herhaalLabel = d => (HERHAAL.find(x => x[0] === d) || [0, d + ' dagen'])[1];
+const dkey = t => { const x = new Date(t); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+const telt = k => (DAGEN[k] || 0) >= DAG_MIN;
+function saveDagen(){
+  const grens = dkey(Date.now() - 400 * DAY);
+  for(const k of Object.keys(DAGEN)) if(k < grens) delete DAGEN[k];
+  try{ localStorage.setItem(LS_DAGEN, JSON.stringify(DAGEN)); }catch(e){}
+}
+// Dagen op rij: telt terug vanaf vandaag (of gisteren, als je vandaag nog niet genoeg hebt geoefend).
+function streak(){
+  const d = new Date(); d.setHours(12, 0, 0, 0);
+  const vandaagK = dkey(d), vandaag = telt(vandaagK);
+  if(!vandaag) d.setDate(d.getDate() - 1);
+  let n = 0; while(telt(dkey(d))){ n++; d.setDate(d.getDate() - 1); }
+  let best = 0, run = 0, prev = null;
+  for(const k of Object.keys(DAGEN).filter(telt).sort()){
+    const t = new Date(k + 'T12:00:00');
+    run = (prev && Math.round((t - prev) / DAY) === 1) ? run + 1 : 1;
+    best = Math.max(best, run); prev = t;
+  }
+  return {n, vandaag, best, nog:Math.max(0, DAG_MIN - (DAGEN[vandaagK] || 0))};
+}
+const FLAME = '<svg class="flame" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3-1-3 0-6.5 1-9.5z" fill="currentColor"/></svg>';
+function weekStrip(){
+  const dag = ['zo','ma','di','wo','do','vr','za'];
+  let h = '<div class="week" aria-label="Afgelopen 7 dagen">';
+  for(let i = 6; i >= 0; i--){
+    const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - i);
+    const k = dkey(d), ok = telt(k);
+    h += `<span class="wd${ok ? ' ok' : ''}${i === 0 ? ' today' : ''}" title="${ok ? 'geoefend' : 'niet geoefend'}"><i>${ok ? '✓' : ''}</i>${i === 0 ? 'vandaag' : dag[d.getDay()]}</span>`;
+  }
+  return h + '</div>';
+}
+function streakHtml(){
+  const st = streak();
+  const txt = st.n
+    ? `<b>${st.n} ${st.n === 1 ? 'dag' : 'dagen'} op rij</b>${st.vandaag ? '' : ` <span class="muted small">· vandaag nog ${st.nog} ${st.nog === 1 ? 'kaart' : 'kaarten'}</span>`}`
+    : `<b>Begin een reeks</b> <span class="muted small">· oefen elke dag minstens ${DAG_MIN} kaarten</span>`;
+  return `<div class="streak${st.n ? ' on' : ''}${st.n && !st.vandaag ? ' risk' : ''}"><div class="row" style="gap:6px">${FLAME}<span>${txt}</span>${st.best > 1 ? `<span class="muted small">· record ${st.best}</span>` : ''}</div>${weekStrip()}</div>`;
+}
 function dagenTekst(d){ if(d === Infinity) return 'nog niet geoefend'; if(d === 0) return 'vandaag geoefend'; if(d === 1) return 'gisteren geoefend'; return d + ' dagen geleden geoefend'; }
 const sortedLists = () => [...S.lists.values()].sort((a,b)=>a.created-b.created);
 const plural = (n, one, many) => n + ' ' + (n===1 ? one : many);
@@ -256,6 +319,8 @@ function load(){
   try{ const raw = localStorage.getItem(LS); if(raw){ for(const l of JSON.parse(raw)) if(l && l.id) S.lists.set(String(l.id), normList(l.id, l)); } }
   catch(e){ S.msg = {t:'Je lijsten konden niet worden gelezen.', err:true}; }
   try{ const st = JSON.parse(localStorage.getItem(LS_SET) || '{}'); if(typeof st.herhaal === 'number') SET.herhaal = st.herhaal; }catch(e){}
+  try{ const kp = JSON.parse(localStorage.getItem(LS_KOPPEL) || 'null'); if(kp && Date.now() - kp.t < 30 * 60000) S.pending = {l:kp.l, w:kp.w}; }catch(e){}
+  try{ const dg = JSON.parse(localStorage.getItem(LS_DAGEN) || '{}'); if(dg && typeof dg === 'object') DAGEN = dg; }catch(e){}
   // Vraag de browser om de gegevens niet zelf op te ruimen.
   try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
 }
@@ -269,7 +334,7 @@ function lastBackup(){ try{ return localStorage.getItem(LS_BACKUP); }catch(e){ r
 /* ---------- back-up ---------- */
 async function makeBackup(){
   const now = new Date();
-  const data = {app:'nmg-oefenen', versie:1, gemaakt:now.toISOString(), instellingen:{...SET}, lijsten:sortedLists()};
+  const data = {app:'nmg-oefenen', versie:1, gemaakt:now.toISOString(), instellingen:{...SET}, dagen:{...DAGEN}, lijsten:sortedLists()};
   const name = 'nmg-oefenen-backup-' + now.toISOString().slice(0,10) + '.json';
   const file = new File([JSON.stringify(data, null, 1)], name, {type:'application/json'});
   const done = () => { try{ localStorage.setItem(LS_BACKUP, now.toISOString()); }catch(e){} S.msg = {t:'Back-up gemaakt: ' + name}; render(); };
@@ -294,7 +359,7 @@ $file.addEventListener('change', async () => {
     const data = JSON.parse(await f.text());
     if(!data || data.app !== 'nmg-oefenen' || !Array.isArray(data.lijsten)) throw new Error('fout');
     const lists = data.lijsten.filter(l => l && l.id).map(l => normList(l.id, l));
-    S.pendingImport = {lists, gemaakt:data.gemaakt, instellingen:data.instellingen};
+    S.pendingImport = {lists, gemaakt:data.gemaakt, instellingen:data.instellingen, dagen:data.dagen};
     S.confirm = 'import'; S.view = 'home'; S.msg = null;
   }catch(e){
     S.msg = {t:'Dit bestand is geen back-up van NmG Oefenen.', err:true};
@@ -309,7 +374,7 @@ function render(opts){
   $app.querySelectorAll('input[id], textarea[id]').forEach(el => { keep[el.id] = el.value; });
   const act = document.activeElement;
   if(act && act.id && $app.contains(act)){ focusId = act.id; try{ sS = act.selectionStart; sE = act.selectionEnd; }catch(e){} }
-  $app.innerHTML = '<div class="wrap">' + view() + '</div>' + koppelBar();
+  $app.innerHTML = '<div class="wrap">' + view() + '</div>' + koppelBar() + (S.toast ? `<div class="toast${S.toast.err ? ' err' : ''}" role="status" aria-live="polite">${esc(S.toast.t)}</div>` : '');
   const reset = new Set(opts.reset || []);
   for(const k in keep){ if(reset.has(k)) continue; const el = document.getElementById(k); if(el) el.value = keep[k]; }
   const f = opts.focus || focusId;
@@ -322,7 +387,9 @@ function koppelBar(){
   if(!w){ S.pending = null; return ''; }
   return `<div class="koppel-spacer"></div><div class="koppelbar" role="region" aria-label="Gebaar koppelen"><div class="inner">
     <div class="kb-txt"><b>Gebaar voor "${esc(w.w)}" gevonden?</b><span class="muted small">Tik bij het Gebarencentrum op het gebaar, dan op het deel-icoon en Kopieer. Kom terug en tik op Koppel.</span></div>
-    <div class="row"><button class="btn primary" data-a="koppel">Koppel gebaar</button><button class="btn ghost" data-a="koppel-stop">Niet nu</button></div>
+    <div class="row"><button class="btn primary" data-a="koppel">Koppel gebaar</button>${S.koppelZelf ? '' : '<button class="btn ghost" data-a="koppel-zelf">Zelf plakken</button>'}<button class="btn ghost" data-a="koppel-stop">Niet nu</button></div>
+    ${S.koppelFb ? `<p class="kb-fb${S.koppelFb.err ? ' err' : ''}">${esc(S.koppelFb.t)}</p>` : ''}
+    ${S.koppelZelf ? `<form id="f-kb" class="row" style="flex-wrap:nowrap;width:100%"><input type="text" inputmode="url" class="url" id="kb-url" placeholder="Houd je vinger hier en kies Plak" autocomplete="off" autocapitalize="off" aria-label="Link van het gebaar"><button class="btn primary" type="submit">Bewaar</button></form>` : ''}
   </div></div>`;
 }
 // Haalt een link uit (geplakte) tekst en bewaart die bij het woord. Geeft een melding terug.
@@ -341,6 +408,28 @@ function addLink(listId, wordId, text, label){
 }
 async function readClipboard(){
   try{ return await navigator.clipboard.readText(); }catch(e){ return null; }
+}
+// Onthoudt voor welk woord je aan het zoeken bent, ook als de iPad de app tussendoor herlaadt.
+function setPending(p){
+  S.pending = p; S.koppelFb = null; S.koppelZelf = false;
+  try{ if(p) localStorage.setItem(LS_KOPPEL, JSON.stringify({...p, t:Date.now()})); else localStorage.removeItem(LS_KOPPEL); }catch(e){}
+}
+// Laat het resultaat van koppelen goed in beeld zien (melding bovenin en in de balk).
+function linkResult(target, r, resetIds){
+  if(r.ok){
+    if(S.pending && S.pending.w === target.w) setPending(null);
+    toast(r.t);
+  } else {
+    if(S.pending && S.pending.w === target.w) S.koppelFb = {err:true, t:r.t};
+    toast(r.t, true);
+  }
+  render({reset: r.ok ? (resetIds || []) : []});
+}
+let toastTimer = null;
+function toast(t, err){
+  S.toast = {t, err:!!err};
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { S.toast = null; render(); }, err ? 7000 : 3500);
 }
 function msgHtml(){
   return S.msg ? `<div class="note${S.msg.err?' err':''}" role="status"><span>${esc(S.msg.t)}</span><button class="btn sm ghost" data-a="dismiss">Sluiten</button></div>` : '';
@@ -418,6 +507,9 @@ function pipInfo(){
   else if(c.gekend / n >= 0.8 && !c.opfrissen && !c.lastig){ m = 'super'; t = todo ? dagPick(['Wauw, bijna alles is groen! Nog ' + todo + ' te gaan.', 'Wat ken jij al veel gebaren! Ik ben trots op je.']) : dagPick(['Alles is groen! Je bent een kanjer.', 'Alles groen! Kort herhalen houdt het zo.']); }
   else if(c.opfrissen >= Math.max(3, n * 0.25) || last >= 4){ m = 'twijfel'; t = c.opfrissen ? (c.opfrissen + ' ' + (c.opfrissen === 1 ? 'woord wordt' : 'woorden worden') + ' een beetje vergeten' + (fris ? ', vooral in "' + fris.name + '"' : '') + '. Even opfrissen?') : 'Het is al ' + last + ' dagen stil. Zullen we even oefenen?'; }
   else { m = 'blij'; t = dagPick(['Goed bezig! Nog ' + todo + ' ' + (todo === 1 ? 'woord' : 'woorden') + ' en alles is groen.', 'Fijn dat je oefent! Zullen we er nog een paar doen?', 'Lekker bezig. Elke ronde maakt het makkelijker.']); }
+  const st = streak();
+  if(n && st.n >= 2 && !st.vandaag && m !== 'mist') t = 'Je zit op ' + st.n + ' dagen op rij! Oefen vandaag nog ' + st.nog + ' ' + (st.nog === 1 ? 'kaart' : 'kaarten') + ', dan houd je je reeks.';
+  else if(n && st.vandaag && st.n >= 3 && m !== 'mist' && m !== 'twijfel') t = dagPick([st.n + ' dagen op rij, wat goed van je!', 'Vandaag telt al mee. ' + st.n + ' dagen op rij!', t]);
   return {m, t, c, n, todo, act};
 }
 // Een ronde voor Pip: eerst wat opgefrist moet worden en wat lastig is, maximaal 20 woorden.
@@ -433,7 +525,7 @@ function pipRonde(info){
 function pipCard(info){
   const k = info.n ? (info.todo ? Math.min(20, info.todo) : Math.min(10, info.n)) : 0;
   return `<section class="pip-card"><div class="pip-fig">${pipSvg(info.m)}</div>
-    <div class="pip-talk"><p class="bubble">${esc(info.t)}</p>
+    <div class="pip-talk"><p class="bubble">${esc(info.t)}</p>${streakHtml()}
     ${k ? `<div class="row"><button class="btn primary" data-a="pip-start">${info.todo ? 'Oefen ' + k + ' ' + (k === 1 ? 'woord' : 'woorden') : 'Herhaal ' + k + ' woorden'}</button><button class="btn ghost" data-a="setup">Zelf kiezen</button></div>` : '<div class="row"><button class="btn" data-a="setup">Oefenen</button></div>'}</div></section>`;
 }
 function settingsPanel(){
@@ -634,8 +726,13 @@ function viewDone(){
   else if(ratio >= 0.8){ pm = 'super'; pt = dagPick(['Geweldig! ' + q.firstTry + ' van de ' + q.total + ' in één keer goed.', 'Wauw, wat ging dat goed!']); }
   else if(ratio >= 0.5){ pt = 'Goed gedaan! De lastige woorden oefenen we gewoon nog een keer.'; }
   else { pt = 'Knap dat je doorzet! Met elke ronde wordt het makkelijker.'; }
+  if(q.streakNu){
+    if(MIJLPALEN.includes(q.streakNu)){ pm = 'super'; pt = q.streakNu + ' dagen op rij! Dat is een mijlpaal. Ik ben zo trots op je!'; }
+    else if(q.streakNu > 1){ pt = 'Vandaag telt mee: ' + q.streakNu + ' dagen op rij! ' + pt; }
+    else { pt = 'Je reeks is begonnen! Kom morgen weer, dan wordt het 2 dagen op rij.'; }
+  }
   let h = `<header><p class="eyebrow">${finished ? 'Ronde klaar' : 'Gestopt'}</p></header>
-    <section class="pip-card"><div class="pip-fig">${pipSvg(pm)}</div><div class="pip-talk"><p class="bubble big">${esc(pt)}</p></div></section>`;
+    <section class="pip-card"><div class="pip-fig">${pipSvg(pm)}</div><div class="pip-talk"><p class="bubble big">${esc(pt)}</p>${streakHtml()}</div></section>`;
   h += `<section class="stats" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
     <div class="stat"><b>${q.firstTry}</b><span>in één keer goed</span></div>
     <div class="stat"><b>${missed.length}</b><span>moest je herhalen</span></div>
@@ -663,6 +760,9 @@ function answer(known){
   if(known){ w.goed++; w.reeks++; } else { w.fout++; w.reeks = 0; }
   w.laatst = new Date().toISOString();
   save();
+  // Dagen op rij: na DAG_MIN kaarten telt vandaag mee.
+  const vk = dkey(Date.now()); DAGEN[vk] = (DAGEN[vk] || 0) + 1; saveDagen();
+  if(DAGEN[vk] === DAG_MIN){ const st = streak(); q.streakNu = st.n; toast(st.n > 1 ? 'Vandaag telt mee: ' + st.n + ' dagen op rij!' : 'Vandaag telt mee! Je reeks is begonnen.'); }
   const key = it.l + ':' + it.w;
   if(known){ q.done++; if(!q.missed.has(key)) q.firstTry++; }
   else {
@@ -715,7 +815,7 @@ $app.addEventListener('click', e => {
     case 'import-no': S.pendingImport = null; S.confirm = null; break;
     case 'import-yes': {
       const p = S.pendingImport;
-      if(p){ for(const nl of p.lists) S.lists.set(nl.id, nl); save(); if(p.instellingen && typeof p.instellingen.herhaal === 'number'){ SET.herhaal = p.instellingen.herhaal; saveSettings(); } S.msg = {t:plural(p.lists.length,'lijst','lijsten') + ' teruggezet.'}; }
+      if(p){ for(const nl of p.lists) S.lists.set(nl.id, nl); save(); if(p.instellingen && typeof p.instellingen.herhaal === 'number'){ SET.herhaal = p.instellingen.herhaal; saveSettings(); } if(p.dagen && typeof p.dagen === 'object'){ for(const [k, v] of Object.entries(p.dagen)) if(/^\d{4}-\d\d-\d\d$/.test(k)) DAGEN[k] = Math.max(DAGEN[k] || 0, +v || 0); saveDagen(); } S.msg = {t:plural(p.lists.length,'lijst','lijsten') + ' teruggezet.'}; }
       S.pendingImport = null; S.confirm = null; window.scrollTo(0,0); break;
     }
     case 'open': S.view = 'list'; S.listId = id; S.confirm = null; S.editWord = null; S.rename = false; S.wordFilter = 'alle'; S.msg = null; window.scrollTo(0,0); break;
@@ -726,25 +826,24 @@ $app.addEventListener('click', e => {
     case 'edit': S.editWord = id; S.confirm = null; render({focus:'ew-' + id}); return;
     case 'edit-cancel': S.editWord = null; break;
     case 'zoek': // de link opent zelf het Gebarencentrum; de app zet de koppelbalk klaar voor als je terugkomt
-      S.pending = {l:b.dataset.l || S.listId, w:id};
+      setPending({l:b.dataset.l || S.listId, w:id});
       if(S.view === 'list'){ S.editWord = id; S.confirm = null; }
       setTimeout(() => render(), 0); return;
-    case 'koppel-stop': S.pending = null; break;
+    case 'koppel-stop': setPending(null); break;
+    case 'koppel-zelf': S.koppelZelf = true; S.koppelFb = null; render({focus:'kb-url'}); return;
     case 'koppel': case 'paste': {
       const target = a === 'koppel' ? S.pending : {l:S.listId, w:id};
       if(!target) break;
       const labEl = a === 'paste' ? document.getElementById('lk-lab-' + id) : null;
       readClipboard().then(t => {
-        if(t === null){
-          // Geen toegang tot het klembord: laat de gebruiker zelf plakken.
-          S.msg = {t:'De app kan je klembord niet lezen. Open het woord, kies "Link zelf plakken" en plak de link daar.', err:true};
-          if(S.view === 'list'){ S.editWord = target.w; }
-          render(); return;
+        if(t === null || t === ''){
+          // Geen toegang tot het klembord: laat de gebruiker zelf plakken in de balk.
+          setPending(target);
+          S.koppelZelf = true;
+          S.koppelFb = {err:true, t: t === '' ? 'Je klembord is leeg. Kopieer eerst de link bij het Gebarencentrum.' : 'Je iPad gaf het klembord niet vrij. Houd je vinger in het vak hieronder en kies Plak.'};
+          render({focus:'kb-url'}); return;
         }
-        const r = addLink(target.l, target.w, t, labEl ? labEl.value : '');
-        S.msg = {t:r.t, err:!r.ok};
-        if(r.ok && S.pending && S.pending.w === target.w) S.pending = null;
-        render({reset: r.ok && labEl ? [labEl.id] : []});
+        linkResult(target, addLink(target.l, target.w, t, labEl ? labEl.value : ''), labEl ? [labEl.id] : []);
       });
       return;
     }
@@ -793,6 +892,13 @@ $app.addEventListener('submit', e => {
     S.view = 'list'; S.listId = id; S.bulk = false; S.wordFilter = 'alle'; S.msg = null;
     render({reset:['nl-name'], focus:'nw-woord'}); return;
   }
+  if(f.id === 'f-kb'){
+    const p = S.pending; if(!p) return;
+    const val = document.getElementById('kb-url').value;
+    const r = addLink(p.l, p.w, val, '');
+    if(!r.ok && !/https:\/\//i.test(val)) r.t = 'Plak een link die begint met https://';
+    linkResult(p, r, ['kb-url']); return;
+  }
   if(!l) return;
   if(f.id === 'f-rename'){
     const name = document.getElementById('rn-name').value.trim();
@@ -819,9 +925,7 @@ $app.addEventListener('submit', e => {
     const urlEl = document.getElementById('lk-url-' + wid), labEl = document.getElementById('lk-lab-' + wid);
     const r = addLink(l.id, wid, urlEl.value, labEl ? labEl.value : '');
     if(!r.ok && !/https:\/\//i.test(urlEl.value)) r.t = 'Plak een link die begint met https://';
-    S.msg = {t:r.t, err:!r.ok};
-    if(r.ok && S.pending && S.pending.w === wid) S.pending = null;
-    render({reset: r.ok ? ['lk-url-' + wid, 'lk-lab-' + wid] : []}); return;
+    linkResult({l:l.id, w:wid}, r, ['lk-url-' + wid, 'lk-lab-' + wid]); return;
   }
   if(f.id === 'f-edit'){
     const wid = f.dataset.id, w = l.words.find(x => x.id === wid); if(!w) return;
