@@ -485,9 +485,9 @@ function pipSvg(m){
   }[m];
   const hand = (x, y, cls) => `<g class="${cls || ''}" transform="translate(${x} ${y})"><ellipse rx="10" ry="12" fill="var(--accent)" stroke="var(--surface)" stroke-width="3"/><path d="M-4 -10 v-6 M1 -11 v-7 M6 -9 v-5" stroke="var(--accent)" stroke-width="5" stroke-linecap="round"/></g>`;
   const hands = m === 'super' ? hand(14, 34, 'pip-up') + hand(106, 34, 'pip-up pip-up2')
-    : m === 'mist' ? hand(18, 92) + hand(102, 92)
-    : m === 'twijfel' ? hand(18, 84) + '<g transform="translate(98 70) rotate(-20)"><ellipse rx="10" ry="12" fill="var(--accent)" stroke="var(--surface)" stroke-width="3"/></g>'
-    : hand(18, 84) + `<g class="pip-wave">${hand(106, 44)}</g>`;
+    : m === 'mist' ? hand(9, 88) + hand(111, 88)
+    : m === 'twijfel' ? hand(8, 74, 'pip-left') + '<g transform="translate(98 70) rotate(-20)"><ellipse rx="10" ry="12" fill="var(--accent)" stroke="var(--surface)" stroke-width="3"/></g>'
+    : hand(8, 74, 'pip-left') + `<g class="pip-wave">${hand(106, 44)}</g>`;
   const sparks = m === 'super' ? '<path d="M60 4 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z M100 8 l2 4 4 2 -4 2 -2 4 -2 -4 -4 -2 4 -2z M18 10 l2 4 4 2 -4 2 -2 4 -2 -4 -4 -2 4 -2z" fill="var(--warn)"/>' : '';
   return `<svg class="pip pip-${m}" viewBox="0 0 120 120" role="img" aria-label="Pip kijkt ${({super:'heel blij',blij:'blij',nieuw:'vrolijk',twijfel:'een beetje bezorgd',mist:'verdrietig'})[m]}">
     ${sparks}<g class="pip-body"><ellipse cx="60" cy="66" rx="40" ry="38" fill="var(--accent)"/><ellipse cx="60" cy="102" rx="26" ry="4" fill="var(--line)" opacity=".7"/>
