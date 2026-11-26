@@ -17,7 +17,7 @@
 /* Layout: one calm column for lists, one big card for practice; large tap targets for iPad. */
 :root{
   --bg:#F4F5FB; --surface:#FFFFFF; --surface-2:#ECEDF7; --ink:#1D1B3B; --muted:#61627E; --line:#DEDFEC;
-  --accent:#4A3ECF; --accent-ink:#FFFFFF; --accent-soft:#E6E3FB; --hand:#FF9A52;
+  --accent:#4A3ECF; --accent-ink:#FFFFFF; --accent-soft:#E6E3FB; --hand:#FF9A52; --fris:#E0701F; --fris-soft:#FDE6D3;
   --good:#18925F; --good-soft:#DDF3E8; --warn:#C98A12; --warn-soft:#FBEFD4; --bad:#CF3F58; --bad-soft:#FBE1E6; --new:#B9BBD0;
   --f-display:ui-rounded, "SF Pro Rounded", "Avenir Next", system-ui, sans-serif;
   --f-body:-apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
@@ -26,7 +26,7 @@
 }
 @media (prefers-color-scheme: dark){ :root{
   --bg:#121224; --surface:#1C1C33; --surface-2:#26263F; --ink:#EDEDF8; --muted:#A3A4C0; --line:#33344F;
-  --accent:#8C82FF; --accent-ink:#13122A; --accent-soft:#2C2858; --hand:#FFAD70;
+  --accent:#8C82FF; --accent-ink:#13122A; --accent-soft:#2C2858; --hand:#FFAD70; --fris:#FF9F5C; --fris-soft:#3F2A1A;
   --good:#45C98F; --good-soft:#173A2C; --warn:#F0B84A; --warn-soft:#3B3017; --bad:#FF7088; --bad-soft:#40202A; --new:#55577A;
   color-scheme:dark;
 }}
@@ -65,12 +65,12 @@ p{margin:0}
 .note{background:var(--accent-soft); border-radius:12px; padding:12px 14px; display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap}
 .note.err{background:var(--bad-soft)}
 
-.stats{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px}
+.stats{display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:10px}
 .stat{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 14px}
 .stat b{display:block; font-family:var(--f-display); font-size:1.6rem; font-variant-numeric:tabular-nums; line-height:1.1}
 .stat span{font-size:.85rem; color:var(--muted); display:flex; align-items:center; gap:6px}
 .dot{width:10px; height:10px; border-radius:50%; display:inline-block; flex:none}
-.d-gekend{background:var(--good)} .d-bijna{background:var(--warn)} .d-lastig{background:var(--bad)} .d-nieuw{background:var(--new)}
+.d-gekend{background:var(--good)} .d-opfrissen{background:var(--fris)} .d-bijna{background:var(--warn)} .d-lastig{background:var(--bad)} .d-nieuw{background:var(--new)}
 
 .lists{display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:12px}
 .card-btn{font:inherit; color:inherit; text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:16px; cursor:pointer; display:flex; flex-direction:column; gap:10px; min-width:0}
@@ -78,7 +78,7 @@ p{margin:0}
 .card-btn h3{font-size:1.15rem; overflow-wrap:anywhere}
 .bar{display:flex; height:8px; border-radius:99px; overflow:hidden; background:var(--surface-2)}
 .bar i{display:block; height:100%}
-.bar .s-gekend{background:var(--good)} .bar .s-bijna{background:var(--warn)} .bar .s-lastig{background:var(--bad)} .bar .s-nieuw{background:var(--new)}
+.bar .s-gekend{background:var(--good)} .bar .s-opfrissen{background:var(--fris)} .bar .s-bijna{background:var(--warn)} .bar .s-lastig{background:var(--bad)} .bar .s-nieuw{background:var(--new)}
 
 .empty{text-align:center; padding:40px 18px; align-items:center}
 .empty .mark{width:64px; height:64px; border-radius:18px}
@@ -103,7 +103,7 @@ textarea{min-height:150px; resize:vertical}
 .word .txt p{color:var(--muted); font-size:.9rem; overflow-wrap:anywhere}
 .score{font-size:.85rem; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap}
 .tag{font-size:.8rem; font-weight:800; border-radius:99px; padding:3px 10px; white-space:nowrap}
-.t-gekend{background:var(--good-soft); color:var(--good)} .t-bijna{background:var(--warn-soft); color:var(--warn)} .t-lastig{background:var(--bad-soft); color:var(--bad)} .t-nieuw{background:var(--surface-2); color:var(--muted)}
+.t-gekend{background:var(--good-soft); color:var(--good)} .t-opfrissen{background:var(--fris-soft); color:var(--fris)} .t-bijna{background:var(--warn-soft); color:var(--warn)} .t-lastig{background:var(--bad-soft); color:var(--bad)} .t-nieuw{background:var(--surface-2); color:var(--muted)}
 .word.editing{background:var(--surface-2)}
 
 .confirm{background:var(--bad-soft); border-radius:12px; padding:12px 14px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between}
@@ -145,6 +145,39 @@ input.url{min-width:0}
 .gstep > div:not(.form-row){display:flex; flex-direction:column; align-items:flex-start; gap:6px; min-width:0}
 a.alt{color:var(--accent); font-weight:700}
 .handmatig summary{cursor:pointer; padding:4px 0}
+
+/* Pip */
+.pip-card{display:flex; gap:18px; align-items:center; background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:16px 20px}
+.pip-fig{flex:none; width:120px}
+.pip{width:120px; height:120px; display:block; overflow:visible}
+.pip-talk{display:flex; flex-direction:column; gap:12px; min-width:0; flex:1}
+.bubble{position:relative; background:var(--accent-soft); border-radius:16px; padding:12px 16px; font-size:1.08rem; font-weight:600; align-self:flex-start}
+.bubble.big{font-size:1.25rem}
+.bubble::before{content:""; position:absolute; left:-9px; top:22px; border:9px solid transparent; border-left:0; border-right-color:var(--accent-soft)}
+.empty .pip-fig{margin:0 auto}
+.pip .pip-body{animation:pip-bob 3.2s ease-in-out infinite}
+.pip .pip-wave{transform-box:fill-box; transform-origin:30% 90%; animation:pip-wave 1.4s ease-in-out 3}
+.pip-super .pip-up{animation:pip-jump .9s ease-in-out infinite}
+.pip-super .pip-up2{animation-delay:.45s}
+.pip-mist .pip-body{animation:none}
+@keyframes pip-bob{50%{transform:translateY(-3px)}}
+@keyframes pip-wave{0%,100%{transform:rotate(0)} 25%{transform:rotate(-18deg)} 75%{transform:rotate(14deg)}}
+@keyframes pip-jump{50%{transform:translateY(-6px)}}
+@media (prefers-reduced-motion: reduce){ .pip *{animation:none !important} }
+@media (max-width:560px){ .pip-card{flex-direction:column; text-align:left; align-items:stretch} .pip-fig{align-self:center} .bubble::before{display:none} }
+
+/* Lijstkaarten: kleur laat zien wat aandacht nodig heeft */
+.card-btn.fris{border-color:var(--fris); background:linear-gradient(var(--fris-soft), var(--surface) 60%)}
+.card-btn.groen{border-color:var(--good)}
+.card-btn.paused{opacity:.6; border-style:dashed}
+.card-btn .tag{flex:none}
+
+/* Aan/uit-schakelaar */
+.switch{flex:none; width:58px; height:34px; border-radius:99px; border:0; background:var(--new); position:relative; cursor:pointer; padding:0}
+.switch span{position:absolute; top:3px; left:3px; width:28px; height:28px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:transform .2s}
+.switch[aria-checked="true"]{background:var(--good)}
+.switch[aria-checked="true"] span{transform:translateX(24px)}
+.switch:focus-visible{outline:3px solid var(--hand); outline-offset:2px}
 .koppel-spacer{height:150px}
 .koppelbar{position:fixed; left:0; right:0; bottom:0; z-index:20; background:var(--surface); border-top:2px solid var(--accent);
   box-shadow:0 -6px 24px rgba(20,18,60,.12); padding-bottom:env(safe-area-inset-bottom, 0px)}
@@ -153,7 +186,7 @@ a.alt{color:var(--accent); font-weight:700}
 .kb-txt{display:flex; flex-direction:column; gap:2px; flex:1 1 280px; min-width:0}
 
 @media (max-width:560px){
-  .stats{grid-template-columns:repeat(2, minmax(0,1fr))}
+  .stats{grid-template-columns:repeat(3, minmax(0,1fr))}
   .answer .btn{min-height:72px; font-size:1.1rem}
   .keys{display:none}
 }
@@ -171,8 +204,12 @@ const $app = document.getElementById('app');
 const $file = document.getElementById('backup-file');
 const LS = 'nmg-oefenen-v1';
 const LS_BACKUP = 'nmg-oefenen-laatste-backup';
-const ST = {gekend:'Ken ik', bijna:'Bijna', lastig:'Lastig', nieuw:'Nieuw'};
-const ORDER = ['gekend','bijna','lastig','nieuw'];
+const LS_SET = 'nmg-oefenen-instellingen';
+const ST = {gekend:'Ken ik', opfrissen:'Opfrissen', bijna:'Bijna', lastig:'Lastig', nieuw:'Nieuw'};
+const ORDER = ['gekend','opfrissen','bijna','lastig','nieuw'];
+const HERHAAL = [[7,'1 week'],[14,'2 weken'],[30,'1 maand'],[90,'3 maanden'],[0,'Nooit']];
+const DAY = 86400000;
+const SET = {herhaal:14};
 const HAND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent-ink)" aria-hidden="true"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/></svg>';
 
 const S = {
@@ -196,9 +233,20 @@ const linkLabel = (w, k) => k.label || (w.links.length > 1 ? 'Gebaar ' + (w.link
 const shortUrl = u => u.replace(/^https:\/\/(www\.)?/i, '').slice(0, 60);
 const zoekAttr = (listId, wordId) => ` data-a="zoek" data-l="${esc(listId)}" data-id="${esc(wordId)}"`;
 const ext = (url, cls, html, extra) => `<a class="${cls}" href="${esc(url)}" target="_blank" rel="noopener"${extra || ''}>${html}</a>`;
-const normList = (id, v) => ({id:String(id), name:String(v.name||'Naamloze lijst'), created:+v.created||0, words:Array.isArray(v.words) ? v.words.map(normWord) : []});
-function status(w){ if(w.goed + w.fout === 0) return 'nieuw'; if(w.reeks >= 3) return 'gekend'; if(w.reeks >= 1) return 'bijna'; return 'lastig'; }
-function counts(words){ const c={gekend:0,bijna:0,lastig:0,nieuw:0}; for(const w of words) c[status(w)]++; return c; }
+const normList = (id, v) => ({id:String(id), name:String(v.name||'Naamloze lijst'), created:+v.created||0, actief:v.actief !== false, words:Array.isArray(v.words) ? v.words.map(normWord) : []});
+const daysSince = iso => { const t = iso ? Date.parse(iso) : NaN; return isNaN(t) ? Infinity : Math.max(0, Math.floor((Date.now() - t) / DAY)); };
+// Een gekend woord dat je te lang niet hebt geoefend, moet opgefrist worden.
+function status(w){
+  if(w.goed + w.fout === 0) return 'nieuw';
+  if(w.reeks >= 3) return (SET.herhaal && daysSince(w.laatst) >= SET.herhaal) ? 'opfrissen' : 'gekend';
+  if(w.reeks >= 1) return 'bijna';
+  return 'lastig';
+}
+function counts(words){ const c={gekend:0,opfrissen:0,bijna:0,lastig:0,nieuw:0}; for(const w of words) c[status(w)]++; return c; }
+const lastPracticed = l => l.words.reduce((m, w) => (w.laatst && (!m || w.laatst > m)) ? w.laatst : m, null);
+const activeLists = () => sortedLists().filter(l => l.actief);
+const herhaalLabel = d => (HERHAAL.find(x => x[0] === d) || [0, d + ' dagen'])[1];
+function dagenTekst(d){ if(d === Infinity) return 'nog niet geoefend'; if(d === 0) return 'vandaag geoefend'; if(d === 1) return 'gisteren geoefend'; return d + ' dagen geleden geoefend'; }
 const sortedLists = () => [...S.lists.values()].sort((a,b)=>a.created-b.created);
 const plural = (n, one, many) => n + ' ' + (n===1 ? one : many);
 const fmtDate = iso => { try{ return new Date(iso).toLocaleDateString('nl-NL', {day:'numeric', month:'long', year:'numeric'}); }catch(e){ return ''; } };
@@ -207,6 +255,7 @@ const fmtDate = iso => { try{ return new Date(iso).toLocaleDateString('nl-NL', {
 function load(){
   try{ const raw = localStorage.getItem(LS); if(raw){ for(const l of JSON.parse(raw)) if(l && l.id) S.lists.set(String(l.id), normList(l.id, l)); } }
   catch(e){ S.msg = {t:'Je lijsten konden niet worden gelezen.', err:true}; }
+  try{ const st = JSON.parse(localStorage.getItem(LS_SET) || '{}'); if(typeof st.herhaal === 'number') SET.herhaal = st.herhaal; }catch(e){}
   // Vraag de browser om de gegevens niet zelf op te ruimen.
   try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
 }
@@ -214,12 +263,13 @@ function save(){
   try{ localStorage.setItem(LS, JSON.stringify(sortedLists())); }
   catch(e){ S.msg = {t:'Opslaan op dit apparaat lukt niet. Gebruik je een privévenster?', err:true}; render(); }
 }
+function saveSettings(){ try{ localStorage.setItem(LS_SET, JSON.stringify(SET)); }catch(e){} }
 function lastBackup(){ try{ return localStorage.getItem(LS_BACKUP); }catch(e){ return null; } }
 
 /* ---------- back-up ---------- */
 async function makeBackup(){
   const now = new Date();
-  const data = {app:'nmg-oefenen', versie:1, gemaakt:now.toISOString(), lijsten:sortedLists()};
+  const data = {app:'nmg-oefenen', versie:1, gemaakt:now.toISOString(), instellingen:{...SET}, lijsten:sortedLists()};
   const name = 'nmg-oefenen-backup-' + now.toISOString().slice(0,10) + '.json';
   const file = new File([JSON.stringify(data, null, 1)], name, {type:'application/json'});
   const done = () => { try{ localStorage.setItem(LS_BACKUP, now.toISOString()); }catch(e){} S.msg = {t:'Back-up gemaakt: ' + name}; render(); };
@@ -244,7 +294,7 @@ $file.addEventListener('change', async () => {
     const data = JSON.parse(await f.text());
     if(!data || data.app !== 'nmg-oefenen' || !Array.isArray(data.lijsten)) throw new Error('fout');
     const lists = data.lijsten.filter(l => l && l.id).map(l => normList(l.id, l));
-    S.pendingImport = {lists, gemaakt:data.gemaakt};
+    S.pendingImport = {lists, gemaakt:data.gemaakt, instellingen:data.instellingen};
     S.confirm = 'import'; S.view = 'home'; S.msg = null;
   }catch(e){
     S.msg = {t:'Dit bestand is geen back-up van NmG Oefenen.', err:true};
@@ -327,34 +377,105 @@ function backupPanel(hasLists){
   }
   return h + `</section>`;
 }
+/* ---------- Pip: het figuurtje dat laat zien hoe het gaat ---------- */
+function pipSvg(m){
+  const eyes = {
+    super:'<path d="M38 58 q8 -9 16 0 M66 58 q8 -9 16 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/>',
+    blij:'<circle cx="46" cy="58" r="8.5" fill="#fff"/><circle cx="74" cy="58" r="8.5" fill="#fff"/><circle cx="47.5" cy="59" r="4.5" fill="#1D1B3B"/><circle cx="75.5" cy="59" r="4.5" fill="#1D1B3B"/><circle cx="49" cy="57" r="1.5" fill="#fff"/><circle cx="77" cy="57" r="1.5" fill="#fff"/>',
+    nieuw:'<circle cx="46" cy="58" r="8.5" fill="#fff"/><circle cx="74" cy="58" r="8.5" fill="#fff"/><circle cx="47.5" cy="59" r="4.5" fill="#1D1B3B"/><circle cx="75.5" cy="59" r="4.5" fill="#1D1B3B"/><circle cx="49" cy="57" r="1.5" fill="#fff"/><circle cx="77" cy="57" r="1.5" fill="#fff"/>',
+    twijfel:'<circle cx="46" cy="59" r="8" fill="#fff"/><circle cx="74" cy="59" r="8" fill="#fff"/><circle cx="45" cy="61" r="4.2" fill="#1D1B3B"/><circle cx="73" cy="61" r="4.2" fill="#1D1B3B"/><path d="M37 46 l16 3 M67 45 q8 -5 16 1" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>',
+    mist:'<path d="M38 60 q8 6 16 0 M66 60 q8 6 16 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M37 50 l14 -4 M83 50 l-14 -4" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M84 64 q4 7 0 10 q-4 -3 0 -10z" fill="#8FC8FF"/>'
+  }[m];
+  const mouth = {
+    super:'<path d="M46 73 q14 20 28 0 z" fill="#fff"/><path d="M53 80 q7 5 14 0" fill="var(--bad)"/>',
+    blij:'<path d="M49 75 q11 11 22 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/>',
+    nieuw:'<path d="M49 75 q11 11 22 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/>',
+    twijfel:'<path d="M50 79 q5 -4 10 0 t10 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/>',
+    mist:'<path d="M50 82 q10 -9 20 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/>'
+  }[m];
+  const hand = (x, y, cls) => `<g class="${cls || ''}" transform="translate(${x} ${y})"><ellipse rx="10" ry="12" fill="var(--accent)" stroke="var(--surface)" stroke-width="3"/><path d="M-4 -10 v-6 M1 -11 v-7 M6 -9 v-5" stroke="var(--accent)" stroke-width="5" stroke-linecap="round"/></g>`;
+  const hands = m === 'super' ? hand(14, 34, 'pip-up') + hand(106, 34, 'pip-up pip-up2')
+    : m === 'mist' ? hand(18, 92) + hand(102, 92)
+    : m === 'twijfel' ? hand(18, 84) + '<g transform="translate(98 70) rotate(-20)"><ellipse rx="10" ry="12" fill="var(--accent)" stroke="var(--surface)" stroke-width="3"/></g>'
+    : hand(18, 84) + `<g class="pip-wave">${hand(106, 44)}</g>`;
+  const sparks = m === 'super' ? '<path d="M60 4 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z M100 8 l2 4 4 2 -4 2 -2 4 -2 -4 -4 -2 4 -2z M18 10 l2 4 4 2 -4 2 -2 4 -2 -4 -4 -2 4 -2z" fill="var(--warn)"/>' : '';
+  return `<svg class="pip pip-${m}" viewBox="0 0 120 120" role="img" aria-label="Pip kijkt ${({super:'heel blij',blij:'blij',nieuw:'vrolijk',twijfel:'een beetje bezorgd',mist:'verdrietig'})[m]}">
+    ${sparks}<g class="pip-body"><ellipse cx="60" cy="66" rx="40" ry="38" fill="var(--accent)"/><ellipse cx="60" cy="102" rx="26" ry="4" fill="var(--line)" opacity=".7"/>
+    <circle cx="36" cy="74" r="6" fill="var(--hand)" opacity=".55"/><circle cx="84" cy="74" r="6" fill="var(--hand)" opacity=".55"/>${eyes}${mouth}</g>${hands}</svg>`;
+}
+function dagPick(arr){ return arr[Math.floor(Date.now() / DAY) % arr.length]; }
+function pipInfo(){
+  const act = activeLists();
+  const words = act.flatMap(l => l.words);
+  const c = counts(words), n = words.length;
+  const last = act.reduce((m, l) => Math.min(m, daysSince(lastPracticed(l))), Infinity);
+  const todo = n - c.gekend;
+  const fris = act.filter(l => counts(l.words).opfrissen).sort((a, b) => counts(b.words).opfrissen - counts(a.words).opfrissen)[0];
+  let m, t;
+  if(!n){ m = 'nieuw'; t = act.length ? 'Zet een paar woorden in je lijst, dan gaan we oefenen!' : 'Er doet nu geen lijst mee. Zet een lijst aan, dan help ik je oefenen.'; }
+  else if(last === Infinity){ m = 'nieuw'; t = dagPick(['Hoi, ik ben Pip! Zullen we samen beginnen?', 'Hoi! Ik ben Pip. Klaar voor je eerste ronde?']); }
+  else if(last >= Math.max(7, SET.herhaal || 14)){ m = 'mist'; t = dagPick(['Ik mis je! Het is al ' + last + ' dagen geleden.', 'Hé, kom je weer oefenen? Je gebaren wachten op je.', 'Al ' + last + ' dagen niet geoefend… Vijf minuutjes samen?']); }
+  else if(c.gekend / n >= 0.8 && !c.opfrissen && !c.lastig){ m = 'super'; t = todo ? dagPick(['Wauw, bijna alles is groen! Nog ' + todo + ' te gaan.', 'Wat ken jij al veel gebaren! Ik ben trots op je.']) : dagPick(['Alles is groen! Je bent een kanjer.', 'Alles groen! Kort herhalen houdt het zo.']); }
+  else if(c.opfrissen >= Math.max(3, n * 0.25) || last >= 4){ m = 'twijfel'; t = c.opfrissen ? (c.opfrissen + ' ' + (c.opfrissen === 1 ? 'woord wordt' : 'woorden worden') + ' een beetje vergeten' + (fris ? ', vooral in "' + fris.name + '"' : '') + '. Even opfrissen?') : 'Het is al ' + last + ' dagen stil. Zullen we even oefenen?'; }
+  else { m = 'blij'; t = dagPick(['Goed bezig! Nog ' + todo + ' ' + (todo === 1 ? 'woord' : 'woorden') + ' en alles is groen.', 'Fijn dat je oefent! Zullen we er nog een paar doen?', 'Lekker bezig. Elke ronde maakt het makkelijker.']); }
+  return {m, t, c, n, todo, act};
+}
+// Een ronde voor Pip: eerst wat opgefrist moet worden en wat lastig is, maximaal 20 woorden.
+function pipRonde(info){
+  const rank = {opfrissen:0, lastig:1, bijna:2, nieuw:3, gekend:4};
+  let items = [];
+  for(const l of info.act) for(const w of l.words) items.push({l:l.id, w:w.id, r:rank[status(w)]});
+  const todo = items.filter(x => x.r < 4);
+  items = todo.length ? todo : items;
+  shuffle(items).sort((a, b) => a.r - b.r);
+  return items.slice(0, todo.length ? 20 : 10).map(({l, w}) => ({l, w}));
+}
+function pipCard(info){
+  const k = info.n ? (info.todo ? Math.min(20, info.todo) : Math.min(10, info.n)) : 0;
+  return `<section class="pip-card"><div class="pip-fig">${pipSvg(info.m)}</div>
+    <div class="pip-talk"><p class="bubble">${esc(info.t)}</p>
+    ${k ? `<div class="row"><button class="btn primary" data-a="pip-start">${info.todo ? 'Oefen ' + k + ' ' + (k === 1 ? 'woord' : 'woorden') : 'Herhaal ' + k + ' woorden'}</button><button class="btn ghost" data-a="setup">Zelf kiezen</button></div>` : '<div class="row"><button class="btn" data-a="setup">Oefenen</button></div>'}</div></section>`;
+}
+function settingsPanel(){
+  return `<section class="panel"><h2>Instellingen</h2>
+    <div><p><b>Opfrissen na</b></p><p class="muted small">Een woord dat je kent, wordt oranje als je het zo lang niet hebt geoefend. Zo zie je wat je moet herhalen om alles groen te houden.</p></div>
+    <div class="chips">${HERHAAL.map(([d, t]) => `<button class="chip" data-a="herhaal" data-v="${d}" aria-pressed="${SET.herhaal === d}">${t}</button>`).join('')}</div></section>`;
+}
+function listCard(l){
+  const lc = counts(l.words), d = daysSince(lastPracticed(l));
+  let tag = '';
+  if(!l.actief) tag = '<span class="tag t-nieuw">Doet niet mee</span>';
+  else if(!l.words.length) tag = '<span class="tag t-nieuw">Leeg</span>';
+  else if(lc.opfrissen) tag = `<span class="tag t-opfrissen">${lc.opfrissen} opfrissen</span>`;
+  else if(lc.gekend === l.words.length) tag = '<span class="tag t-gekend">Alles groen</span>';
+  else if(lc.lastig) tag = `<span class="tag t-lastig">${lc.lastig} lastig</span>`;
+  const state = !l.actief ? ' paused' : (lc.opfrissen ? ' fris' : (l.words.length && lc.gekend === l.words.length ? ' groen' : ''));
+  return `<button class="card-btn${state}" data-a="open" data-id="${esc(l.id)}"><div class="row between" style="align-items:flex-start;flex-wrap:nowrap"><h3>${esc(l.name)}</h3>${tag}</div>
+    ${bar(lc, l.words.length)}
+    <span class="muted small">${plural(l.words.length,'woord','woorden')}${l.words.length ? ' · ' + dagenTekst(d) : ''}</span></button>`;
+}
 function viewHome(){
   const lists = sortedLists();
-  const all = lists.flatMap(l => l.words);
-  const c = counts(all);
   let h = `<header class="row between"><div class="brand"><div class="mark">${HAND}</div><div><h1>NmG Oefenen</h1><p class="muted small">Gebaren oefenen met je eigen woordenlijsten</p></div></div>`;
-  if(lists.length) h += `<button class="btn primary big" data-a="setup">Oefenen</button>`;
   h += `</header>` + msgHtml();
   if(!lists.length){
-    h += `<section class="panel empty"><div class="mark">${HAND}</div><h2>Nog geen lijsten</h2>
-      <p class="muted" style="max-width:32em">Maak een lijst, zet er de woorden in die je wilt oefenen en begin. Bij elk woord kun je ook kort opschrijven hoe het gebaar gaat.</p>
+    h += `<section class="panel empty"><div class="pip-fig">${pipSvg('nieuw')}</div><h2>Hoi, ik ben Pip!</h2>
+      <p class="muted" style="max-width:32em">Maak een lijst, zet er de woorden in die je wilt oefenen en begin. Ik houd bij hoe het gaat en help je om alles groen te houden.</p>
       ${S.newList ? '' : '<div class="row" style="justify-content:center"><button class="btn primary" data-a="newlist">Nieuwe lijst</button><button class="btn" data-a="sample">Voorbeeldlijst toevoegen</button></div>'}
     </section>`;
     if(S.newList) h += newListForm();
     return h + backupPanel(false);
   }
-  h += `<section class="stats" aria-label="Voortgang over alle lijsten">
-    ${ORDER.map(k => `<div class="stat"><b>${c[k]}</b><span><i class="dot d-${k}"></i>${ST[k]}</span></div>`).join('')}
+  const info = pipInfo();
+  h += pipCard(info);
+  h += `<section class="stats" aria-label="Voortgang van de lijsten die meedoen">
+    ${ORDER.map(k => `<div class="stat"><b>${info.c[k]}</b><span><i class="dot d-${k}"></i>${ST[k]}</span></div>`).join('')}
   </section>`;
   h += `<section style="display:flex;flex-direction:column;gap:12px"><div class="row between"><h2>Mijn lijsten</h2>${S.newList ? '' : '<button class="btn" data-a="newlist">+ Nieuwe lijst</button>'}</div>`;
   if(S.newList) h += newListForm();
-  h += `<div class="lists">` + lists.map(l => {
-    const lc = counts(l.words);
-    return `<button class="card-btn" data-a="open" data-id="${esc(l.id)}"><h3>${esc(l.name)}</h3>
-      ${bar(lc, l.words.length)}
-      <span class="muted small">${plural(l.words.length,'woord','woorden')}${l.words.length ? ' · ' + lc.gekend + ' ken ik' : ''}${lc.lastig ? ' · ' + lc.lastig + ' lastig' : ''}</span></button>`;
-  }).join('') + `</div></section>`;
-  h += `<p class="muted small">Een woord staat op <b>Ken ik</b> als je het 3 keer achter elkaar wist. Weet je het een keer niet, dan begint het opnieuw.</p>`;
-  return h + backupPanel(true);
+  h += `<div class="lists">` + lists.map(listCard).join('') + `</div></section>`;
+  h += `<p class="muted small">Een woord staat op <b>Ken ik</b> als je het 3 keer achter elkaar wist. Heb je het ${SET.herhaal ? herhaalLabel(SET.herhaal) : 'heel lang'} niet geoefend, dan wordt het <b>Opfrissen</b>. Weet je het een keer niet, dan begint het opnieuw.</p>`;
+  return h + settingsPanel() + backupPanel(true);
 }
 function viewList(){
   const l = S.lists.get(S.listId);
@@ -363,7 +484,7 @@ function viewList(){
   if(S.rename){
     h += `<form class="form-row" id="f-rename"><div class="field"><label for="rn-name">Naam van de lijst</label><input type="text" id="rn-name" value="${esc(l.name)}" maxlength="80" autocomplete="off"></div><button class="btn primary" type="submit">Opslaan</button><button class="btn ghost" type="button" data-a="rename-cancel">Annuleren</button></form>`;
   } else {
-    h += `<header class="row between"><div style="min-width:0"><p class="eyebrow">Lijst</p><h1 style="overflow-wrap:anywhere">${esc(l.name)}</h1><p class="muted small">${plural(l.words.length,'woord','woorden')}</p></div>
+    h += `<header class="row between"><div style="min-width:0"><p class="eyebrow">Lijst</p><h1 style="overflow-wrap:anywhere">${esc(l.name)}</h1><p class="muted small">${plural(l.words.length,'woord','woorden')} · ${dagenTekst(daysSince(lastPracticed(l)))}${l.actief ? '' : ' · <b>doet niet mee</b>'}</p></div>
       <div class="row"><button class="btn ghost sm" data-a="rename">Naam wijzigen</button>${l.words.length ? `<button class="btn primary big" data-a="setup" data-id="${esc(l.id)}">Oefen deze lijst</button>` : ''}</div></header>`;
   }
   h += msgHtml();
@@ -382,7 +503,7 @@ function viewList(){
     const fl = S.wordFilter;
     h += `<section style="display:flex;flex-direction:column;gap:12px"><div class="chips" role="group" aria-label="Woorden tonen">
       <button class="chip" data-a="wfilter" data-v="alle" aria-pressed="${fl==='alle'}">Alle <span class="n">${l.words.length}</span></button>
-      ${['lastig','bijna','nieuw','gekend'].map(k => `<button class="chip" data-a="wfilter" data-v="${k}" aria-pressed="${fl===k}"><i class="dot d-${k}"></i>${ST[k]} <span class="n">${c[k]}</span></button>`).join('')}
+      ${['opfrissen','lastig','bijna','nieuw','gekend'].map(k => `<button class="chip" data-a="wfilter" data-v="${k}" aria-pressed="${fl===k}"><i class="dot d-${k}"></i>${ST[k]} <span class="n">${c[k]}</span></button>`).join('')}
     </div>`;
     const ws = l.words.filter(w => fl === 'alle' || status(w) === fl);
     if(!ws.length) h += `<p class="muted">Geen woorden met deze status.</p>`;
@@ -391,7 +512,9 @@ function viewList(){
   } else {
     h += `<p class="muted">Deze lijst is nog leeg. Voeg hierboven je eerste woord toe.</p>`;
   }
-  h += `<section class="panel"><h2>Beheer</h2>`;
+  h += `<section class="panel"><h2>Beheer</h2>
+    <div class="row between" style="flex-wrap:nowrap;align-items:flex-start"><div><b>Doet mee</b><p class="muted small">Lijsten die meedoen, staan klaar bij Oefenen en tellen mee voor Pip. Zet een lijst uit als je hem even niet oefent.</p></div>
+    <button class="switch" role="switch" aria-checked="${l.actief}" data-a="toggle-actief" aria-label="Lijst doet mee"><span></span></button></div>`;
   if(S.confirm === 'reset') h += `<div class="confirm"><span>Voortgang van alle woorden in deze lijst op nul zetten?</span><div class="row"><button class="btn sm danger solid" data-a="confirm-yes">Ja, op nul zetten</button><button class="btn sm" data-a="confirm-no">Nee</button></div></div>`;
   else if(S.confirm === 'list') h += `<div class="confirm"><span>De lijst "${esc(l.name)}" en ${plural(l.words.length,'woord','woorden')} verwijderen? Dit kan niet ongedaan worden.</span><div class="row"><button class="btn sm danger solid" data-a="confirm-yes">Ja, verwijderen</button><button class="btn sm" data-a="confirm-no">Nee</button></div></div>`;
   else h += `<div class="row">${l.words.length ? '<button class="btn" data-a="ask-reset">Voortgang op nul zetten</button>' : ''}<button class="btn danger" data-a="ask-list">Lijst verwijderen</button></div>`;
@@ -505,7 +628,14 @@ function viewDone(){
   const q = S.quiz;
   const missed = [...q.missed.entries()].map(([k, n]) => { const [l, w] = k.split(':'); return {it:{l, w}, n}; }).filter(x => findWord(x.it));
   const finished = !q.queue.length;
-  let h = `<header><p class="eyebrow">${finished ? 'Ronde klaar' : 'Gestopt'}</p><h1>${finished ? 'Goed gedaan!' : 'Tot zover'}</h1></header>`;
+  const ratio = q.total ? q.firstTry / q.total : 0;
+  let pm = 'blij', pt;
+  if(!finished) { if(q.done){ pt = 'Fijn dat je even geoefend hebt! Alles wat je wist, is bewaard.'; } else { pm = 'twijfel'; pt = 'Geen tijd? Geeft niks, volgende keer verder.'; } }
+  else if(ratio >= 0.8){ pm = 'super'; pt = dagPick(['Geweldig! ' + q.firstTry + ' van de ' + q.total + ' in één keer goed.', 'Wauw, wat ging dat goed!']); }
+  else if(ratio >= 0.5){ pt = 'Goed gedaan! De lastige woorden oefenen we gewoon nog een keer.'; }
+  else { pt = 'Knap dat je doorzet! Met elke ronde wordt het makkelijker.'; }
+  let h = `<header><p class="eyebrow">${finished ? 'Ronde klaar' : 'Gestopt'}</p></header>
+    <section class="pip-card"><div class="pip-fig">${pipSvg(pm)}</div><div class="pip-talk"><p class="bubble big">${esc(pt)}</p></div></section>`;
   h += `<section class="stats" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
     <div class="stat"><b>${q.firstTry}</b><span>in één keer goed</span></div>
     <div class="stat"><b>${missed.length}</b><span>moest je herhalen</span></div>
@@ -568,6 +698,9 @@ $app.addEventListener('click', e => {
   const l = S.lists.get(S.listId);
   switch(a){
     case 'dismiss': S.msg = null; break;
+    case 'herhaal': SET.herhaal = +v; saveSettings(); break;
+    case 'toggle-actief': if(l){ l.actief = !l.actief; save(); } break;
+    case 'pip-start': { const items = pipRonde(pipInfo()); if(items.length){ S.msg = null; startQuiz(items); return; } break; }
     case 'home': S.view = 'home'; S.confirm = null; S.editWord = null; S.rename = false; S.newList = false; S.quiz = null; window.scrollTo(0,0); break;
     case 'newlist': S.newList = true; render({focus:'nl-name'}); return;
     case 'newlist-cancel': S.newList = false; break;
@@ -582,7 +715,7 @@ $app.addEventListener('click', e => {
     case 'import-no': S.pendingImport = null; S.confirm = null; break;
     case 'import-yes': {
       const p = S.pendingImport;
-      if(p){ for(const nl of p.lists) S.lists.set(nl.id, nl); save(); S.msg = {t:plural(p.lists.length,'lijst','lijsten') + ' teruggezet.'}; }
+      if(p){ for(const nl of p.lists) S.lists.set(nl.id, nl); save(); if(p.instellingen && typeof p.instellingen.herhaal === 'number'){ SET.herhaal = p.instellingen.herhaal; saveSettings(); } S.msg = {t:plural(p.lists.length,'lijst','lijsten') + ' teruggezet.'}; }
       S.pendingImport = null; S.confirm = null; window.scrollTo(0,0); break;
     }
     case 'open': S.view = 'list'; S.listId = id; S.confirm = null; S.editWord = null; S.rename = false; S.wordFilter = 'alle'; S.msg = null; window.scrollTo(0,0); break;
@@ -633,7 +766,7 @@ $app.addEventListener('click', e => {
       S.confirm = null; break;
     }
     case 'setup':
-      S.setup.sel = new Set(id ? [id] : (S.setup.sel.size ? [...S.setup.sel] : sortedLists().map(x => x.id)));
+      S.setup.sel = new Set(id ? [id] : (activeLists().length ? activeLists() : sortedLists()).map(x => x.id));
       S.view = 'setup'; S.msg = null; S.confirm = null; window.scrollTo(0,0); break;
     case 'sel': S.setup.sel.has(id) ? S.setup.sel.delete(id) : S.setup.sel.add(id); break;
     case 'sel-all': { const ls = sortedLists(); const all = ls.every(x => S.setup.sel.has(x.id)); S.setup.sel = new Set(all ? [] : ls.map(x => x.id)); break; }
