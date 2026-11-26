@@ -483,7 +483,8 @@ function pipSvg(m){
     twijfel:'<path d="M50 79 q5 -4 10 0 t10 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/>',
     mist:'<path d="M50 82 q10 -9 20 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/>'
   }[m];
-  const hand = (x, y, cls) => `<g class="${cls || ''}" transform="translate(${x} ${y})"><ellipse rx="10" ry="12" fill="var(--accent)" stroke="var(--surface)" stroke-width="3"/><path d="M-4 -10 v-6 M1 -11 v-7 M6 -9 v-5" stroke="var(--accent)" stroke-width="5" stroke-linecap="round"/></g>`;
+  // De animatie zit op de buitenste groep, de plek op de binnenste; anders overschrijft de animatie de plek.
+  const hand = (x, y, cls) => `<g class="${cls || ''}"><g transform="translate(${x} ${y})"><ellipse rx="10" ry="12" fill="var(--accent)" stroke="var(--surface)" stroke-width="3"/><path d="M-4 -10 v-6 M1 -11 v-7 M6 -9 v-5" stroke="var(--accent)" stroke-width="5" stroke-linecap="round"/></g></g>`;
   const hands = m === 'super' ? hand(14, 34, 'pip-up') + hand(106, 34, 'pip-up pip-up2')
     : m === 'mist' ? hand(9, 88) + hand(111, 88)
     : m === 'twijfel' ? hand(8, 74, 'pip-left') + '<g transform="translate(98 70) rotate(-20)"><ellipse rx="10" ry="12" fill="var(--accent)" stroke="var(--surface)" stroke-width="3"/></g>'
