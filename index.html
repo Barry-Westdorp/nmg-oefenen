@@ -145,6 +145,8 @@ input.url{min-width:0}
 .gstep > div:not(.form-row){display:flex; flex-direction:column; align-items:flex-start; gap:6px; min-width:0}
 a.alt{color:var(--accent); font-weight:700}
 .handmatig summary{cursor:pointer; padding:4px 0}
+.glink .lbl{flex:1 1 160px; width:auto; min-height:40px}
+.glink .txt{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
 
 /* Pip */
 .pip-card{display:flex; gap:18px; align-items:center; background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:16px 20px}
@@ -223,7 +225,7 @@ const $app = document.getElementById('app');
 const $file = document.getElementById('backup-file');
 const LS = 'nmg-oefenen-v1';
 const LS_BACKUP = 'nmg-oefenen-laatste-backup';
-const APP_VERSIE = '9';
+const APP_VERSIE = '10';
 const LS_SET = 'nmg-oefenen-instellingen';
 const LS_KOPPEL = 'nmg-oefenen-koppel';
 const LS_DAGEN = 'nmg-oefenen-dagen';
@@ -386,6 +388,7 @@ function koppelBar(){
   const p = S.pending; if(!p) return '';
   const l = S.lists.get(p.l), w = l && l.words.find(x => x.id === p.w);
   if(!w){ S.pending = null; return ''; }
+  if(S.view === 'list' && S.editWord === p.w) return '';  // het woord staat open: daar zit het plakvak al
   return `<div class="koppel-spacer"></div><div class="koppelbar" role="region" aria-label="Gebaar koppelen"><div class="inner">
     <div class="kb-txt"><b>Gebaar voor "${esc(w.w)}" gevonden?</b><span class="muted small">Kopieer bij het Gebarencentrum de link van het gebaar. Houd dan hieronder je vinger in het vak en kies Plak. De app bewaart het meteen.</span></div>
     <button class="btn ghost" data-a="koppel-stop">Niet nu</button>
@@ -623,35 +626,32 @@ function wordRow(w){
     const id = esc(w.id);
     const links = w.links.length
       ? `<div class="glinks">` + w.links.map(k => {
-          const mine = k.id === w.mijn;
-          return `<div class="glink${mine ? ' mine' : ''}">
-            <button type="button" class="pick" data-a="mijn" data-id="${esc(k.id)}" aria-pressed="${mine}" aria-label="Maak ${esc(linkLabel(w, k))} mijn gebaar">${mine ? '★' : '☆'}</button>
-            <div class="txt"><b>${esc(linkLabel(w, k))}</b>${mine && w.links.length > 1 ? ' <span class="tag t-gekend">Mijn gebaar</span>' : ''}<p>${esc(shortUrl(k.url))}</p></div>
-            ${ext(k.url, 'btn sm', '▶ Bekijk')}
+          const mine = k.id === w.mijn, multi = w.links.length > 1;
+          return `<div class="glink${mine && multi ? ' mine' : ''}">
+            ${multi ? `<button type="button" class="pick" data-a="mijn" data-id="${esc(k.id)}" aria-pressed="${mine}" aria-label="Maak dit mijn gebaar">${mine ? '★' : '☆'}</button>` : ''}
+            <div class="txt">${ext(k.url, 'btn sm', '▶ Bekijk gebaar')}${mine && multi ? ' <span class="tag t-gekend">Mijn gebaar</span>' : ''}</div>
+            ${multi ? `<input type="text" class="lbl" id="lb-${esc(k.id)}" data-link="${esc(k.id)}" value="${esc(k.label)}" maxlength="40" placeholder="Naampje, bijv. zitbank" autocomplete="off" aria-label="Naampje voor dit gebaar">` : ''}
             <button type="button" class="btn ghost sm" data-a="del-link" data-id="${esc(k.id)}">Verwijder</button></div>`;
         }).join('') + `</div>`
       : '';
     return `<div class="word editing">
       <form class="form-row" id="f-edit" data-id="${id}" style="width:100%">
-        <div class="field"><label for="ew-${id}">Woord</label><input type="text" id="ew-${id}" value="${esc(w.w)}" maxlength="120" autocomplete="off"></div>
-        <div class="field" style="flex-basis:240px"><label for="eg-${id}">Hoe gaat het gebaar? <span class="muted">(eigen uitleg)</span></label><input type="text" id="eg-${id}" value="${esc(w.g)}" maxlength="400" autocomplete="off"></div>
-        <div class="row"><button class="btn primary sm" type="submit">Opslaan</button><button class="btn ghost sm" type="button" data-a="edit-cancel">Sluiten</button></div>
+        <div class="field"><label for="ew-${id}">Woord</label><input type="text" id="ew-${id}" data-autoword="1" value="${esc(w.w)}" maxlength="120" autocomplete="off"></div>
+        <div class="field" style="flex-basis:240px"><label for="eg-${id}">Eigen uitleg <span class="muted">(mag leeg)</span></label><input type="text" id="eg-${id}" data-autoword="1" value="${esc(w.g)}" maxlength="400" autocomplete="off"></div>
       </form>
       <div class="gsec">
-        <h3>Voorbeeld van het gebaar</h3>
+        <h3>Gebaar${w.links.length ? '' : ' koppelen'}</h3>
         ${links}
-        ${w.links.length > 1 ? '<p class="muted small">Tik op de ster bij het gebaar dat jij leert. Dat gebaar zie je tijdens het oefenen als eerste.</p>' : ''}
+        ${w.links.length > 1 ? '<p class="muted small">Tik op de ster bij het gebaar dat jij leert. Dat zie je bij het oefenen als eerste.</p>' : ''}
+        ${w.links.length ? '<p class="muted small"><b>Nog een gebaar toevoegen?</b></p>' : ''}
         <div class="gstep"><span class="num">1</span><div>${ext(zoekUrl(w.w), 'btn', 'Zoek "' + esc(w.w) + '" bij het Gebarencentrum', zoekAttr(S.listId, w.id))}
           <p class="muted small">Tik daar op het goede gebaar, dan op het deel-icoon en Kopieer.</p></div></div>
-        <div class="gstep"><span class="num">2</span><div>
-          <div class="row"><button type="button" class="btn primary" data-a="paste" data-id="${id}">Koppel gekopieerd gebaar</button>
-          <input type="text" id="lk-lab-${id}" maxlength="40" placeholder="Naampje, bijv. zitbank (mag leeg)" autocomplete="off" aria-label="Naampje voor dit gebaar" style="width:auto;flex:1 1 200px"></div>
-        </div></div>
-        <details class="handmatig" open><summary class="muted small">Link plakken</summary>
-        <form class="form-row" id="f-link" data-id="${id}" style="margin-top:8px">
-          <div class="field"><label for="lk-url-${id}">Link van het gebaar</label><input type="text" inputmode="url" class="url" id="lk-url-${id}" data-autosave="1" placeholder="https://ow.gebarencentrum.nl/gloss/…" autocomplete="off" autocapitalize="off"></div>
-          <button class="btn" type="submit">Bewaar</button></form></details>
-      </div></div>`;
+        <form class="gstep" id="f-link" data-id="${id}"><span class="num">2</span><div style="flex:1;min-width:0">
+          <div class="row" style="flex-wrap:nowrap;width:100%"><input type="text" inputmode="url" class="url" style="flex:1" id="lk-url-${id}" data-autosave="1" placeholder="Houd je vinger hier en kies Plak" autocomplete="off" autocapitalize="off" aria-label="Link van het gebaar"><button class="btn" type="submit">Bewaar</button></div>
+          <p class="muted small">Na het plakken wordt het gebaar meteen bewaard.</p></div></form>
+      </div>
+      <div class="row" style="width:100%;justify-content:flex-end"><span class="muted small" style="margin-right:auto">Wijzigingen worden vanzelf bewaard.</span><button type="button" class="btn primary" data-a="edit-done">Klaar</button></div>
+    </div>`;
   }
   if(S.confirm === 'word:' + w.id){
     return `<div class="word confirm" style="border-radius:0"><span>"${esc(w.w)}" verwijderen?</span><div class="row"><button class="btn sm danger solid" data-a="confirm-yes">Verwijderen</button><button class="btn sm" data-a="confirm-no">Nee</button></div></div>`;
@@ -827,11 +827,12 @@ $app.addEventListener('click', e => {
     case 'rename-cancel': S.rename = false; break;
     case 'bulk': S.bulk = !S.bulk; render({focus: S.bulk ? 'bk-text' : 'nw-woord'}); return;
     case 'wfilter': S.wordFilter = v; break;
-    case 'edit': S.editWord = id; S.confirm = null; render({focus:'ew-' + id}); return;
+    case 'edit': if(S.editWord && S.editWord !== id) saveWordFields(S.editWord); S.editWord = id; S.confirm = null; break;
     case 'edit-cancel': S.editWord = null; break;
+    case 'edit-done': saveWordFields(S.editWord); S.editWord = null; setPending(null); break;
     case 'zoek': // de link opent zelf het Gebarencentrum; de app zet de koppelbalk klaar voor als je terugkomt
       setPending({l:b.dataset.l || S.listId, w:id});
-      if(S.view === 'list'){ S.editWord = id; S.confirm = null; }
+      if(S.view === 'list'){ if(S.editWord && S.editWord !== id) saveWordFields(S.editWord); S.editWord = id; S.confirm = null; }
       setTimeout(() => render(), 0); return;
     case 'koppel-stop': setPending(null); break;
     case 'koppel-zelf': S.koppelZelf = true; S.koppelFb = null; render({focus:'kb-url'}); return;
@@ -926,19 +927,34 @@ $app.addEventListener('submit', e => {
   }
   if(f.id === 'f-link'){
     const wid = f.dataset.id, w = l.words.find(x => x.id === wid); if(!w) return;
-    const urlEl = document.getElementById('lk-url-' + wid), labEl = document.getElementById('lk-lab-' + wid);
-    const r = addLink(l.id, wid, urlEl.value, labEl ? labEl.value : '');
+    const urlEl = document.getElementById('lk-url-' + wid);
+    const r = addLink(l.id, wid, urlEl.value, '');
     if(!r.ok && !/https:\/\//i.test(urlEl.value)) r.t = 'Plak een link die begint met https://';
-    linkResult({l:l.id, w:wid}, r, ['lk-url-' + wid, 'lk-lab-' + wid]); return;
+    linkResult({l:l.id, w:wid}, r, ['lk-url-' + wid]); return;
   }
   if(f.id === 'f-edit'){
     const wid = f.dataset.id, w = l.words.find(x => x.id === wid); if(!w) return;
-    const nw = document.getElementById('ew-' + wid).value.trim(), ng = document.getElementById('eg-' + wid).value.trim();
-    if(!nw) return;
-    w.w = nw; w.g = ng; save(); S.editWord = null; render(); return;
+    saveWordFields(wid); S.editWord = null; setPending(null); render(); return;
   }
 });
 
+// Woord en eigen uitleg worden bewaard zodra je het vak verlaat.
+function saveWordFields(wid){
+  const l = S.lists.get(S.listId), w = l && l.words.find(x => x.id === wid); if(!w) return;
+  const we = document.getElementById('ew-' + wid), ge = document.getElementById('eg-' + wid);
+  if(!we || !ge) return;
+  const nw = we.value.trim(), ng = ge.value.trim();
+  if(nw && (nw !== w.w || ng !== w.g)){ w.w = nw; w.g = ng; save(); }
+}
+$app.addEventListener('change', e => {
+  const el = e.target;
+  if(el.dataset && el.dataset.autoword && S.editWord) saveWordFields(S.editWord);
+  if(el.dataset && el.dataset.link){
+    const l = S.lists.get(S.listId), w = l && l.words.find(x => x.id === S.editWord);
+    const k = w && w.links.find(x => x.id === el.dataset.link);
+    if(k && k.label !== el.value.trim()){ k.label = el.value.trim(); save(); }
+  }
+});
 // Plakken in een linkvak bewaart meteen, zonder extra knop.
 $app.addEventListener('input', e => {
   const el = e.target;
