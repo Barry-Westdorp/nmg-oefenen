@@ -145,6 +145,12 @@ input.url{min-width:0}
 .gstep > div:not(.form-row){display:flex; flex-direction:column; align-items:flex-start; gap:6px; min-width:0}
 a.alt{color:var(--accent); font-weight:700}
 .handmatig summary{cursor:pointer; padding:4px 0}
+.hps{display:flex; flex-direction:column; border:1px solid var(--line); border-radius:12px; overflow:hidden}
+.hp{display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; padding:12px 14px; border-top:1px solid var(--line); background:var(--surface)}
+.hp:first-child{border-top:0}
+.hp .txt{flex:1 1 240px; min-width:0}
+.hp .txt p{overflow-wrap:anywhere}
+.hp.ask{background:var(--surface-2)}
 .glink .lbl{flex:1 1 160px; width:auto; min-height:40px}
 .glink .txt{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
 
@@ -217,7 +223,7 @@ a.alt{color:var(--accent); font-weight:700}
 </head>
 <body>
 <div id="app"></div>
-<input type="file" id="backup-file" accept=".json,application/json" hidden>
+<input type="file" id="backup-file" accept=".json,application/json" multiple hidden>
 
 <script>
 (function(){
@@ -225,7 +231,9 @@ const $app = document.getElementById('app');
 const $file = document.getElementById('backup-file');
 const LS = 'nmg-oefenen-v1';
 const LS_BACKUP = 'nmg-oefenen-laatste-backup';
-const APP_VERSIE = '10';
+const BIJGEWERKT = '2026-11-27';  // datum van de laatste wijziging aan de app
+const LS_HP = 'nmg-oefenen-herstelpunten';
+const HP_MAX = 10;
 const LS_SET = 'nmg-oefenen-instellingen';
 const LS_KOPPEL = 'nmg-oefenen-koppel';
 const LS_DAGEN = 'nmg-oefenen-dagen';
@@ -334,13 +342,42 @@ function save(){
 function saveSettings(){ try{ localStorage.setItem(LS_SET, JSON.stringify(SET)); }catch(e){} }
 function lastBackup(){ try{ return localStorage.getItem(LS_BACKUP); }catch(e){ return null; } }
 
-/* ---------- back-up ---------- */
+/* ---------- back-up en herstelpunten ---------- */
+const snapshot = () => ({app:'nmg-oefenen', versie:1, gemaakt:new Date().toISOString(), instellingen:{...SET}, dagen:{...DAGEN}, lijsten:sortedLists()});
+const fmtTijd = iso => { try{ return new Date(iso).toLocaleString('nl-NL', {weekday:'short', day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'}); }catch(e){ return iso; } };
+function samenvatting(data){
+  const ls = data.lijsten || [];
+  const n = ls.reduce((t, l) => t + (Array.isArray(l.words) ? l.words.length : 0), 0);
+  return plural(ls.length, 'lijst', 'lijsten') + ' · ' + plural(n, 'woord', 'woorden') + (ls.length ? ' · ' + ls.slice(0, 3).map(l => l.name).join(', ') + (ls.length > 3 ? ', …' : '') : '');
+}
+// Herstelpunten: kopieën die de app zelf op dit apparaat bewaart (maximaal HP_MAX).
+function herstelpunten(){ try{ const a = JSON.parse(localStorage.getItem(LS_HP) || '[]'); return Array.isArray(a) ? a : []; }catch(e){ return []; } }
+function maakHerstelpunt(reden){
+  if(!S.lists.size) return;
+  const hp = herstelpunten(), data = snapshot();
+  if(hp[0] && JSON.stringify(hp[0].data.lijsten) === JSON.stringify(data.lijsten)) return; // niets veranderd
+  hp.unshift({id:mkId(), reden, data});
+  try{ localStorage.setItem(LS_HP, JSON.stringify(hp.slice(0, HP_MAX))); }
+  catch(e){ try{ localStorage.setItem(LS_HP, JSON.stringify(hp.slice(0, 3))); }catch(e2){} }
+}
+// Eén keer per dag vanzelf een herstelpunt, als er iets veranderd is.
+function dagelijksHerstelpunt(){
+  const hp = herstelpunten();
+  if(!hp[0] || dkey(hp[0].data.gemaakt) !== dkey(Date.now())) maakHerstelpunt('Automatisch');
+}
+function zetTerug(data){
+  maakHerstelpunt('Voor het terugzetten');
+  S.lists = new Map();
+  for(const l of (data.lijsten || [])) if(l && l.id) S.lists.set(String(l.id), normList(l.id, l));
+  save();
+  if(data.instellingen && typeof data.instellingen.herhaal === 'number'){ SET.herhaal = data.instellingen.herhaal; saveSettings(); }
+  if(data.dagen && typeof data.dagen === 'object'){ for(const [k, v] of Object.entries(data.dagen)) if(/^\d{4}-\d\d-\d\d$/.test(k)) DAGEN[k] = Math.max(DAGEN[k] || 0, +v || 0); saveDagen(); }
+}
 async function makeBackup(){
-  const now = new Date();
-  const data = {app:'nmg-oefenen', versie:1, gemaakt:now.toISOString(), instellingen:{...SET}, dagen:{...DAGEN}, lijsten:sortedLists()};
-  const name = 'nmg-oefenen-backup-' + now.toISOString().slice(0,10) + '.json';
+  const data = snapshot(), d = new Date(data.gemaakt);
+  const name = 'NmG Oefenen back-up ' + dkey(d) + ' ' + String(d.getHours()).padStart(2, '0') + '.' + String(d.getMinutes()).padStart(2, '0') + '.json';
   const file = new File([JSON.stringify(data, null, 1)], name, {type:'application/json'});
-  const done = () => { try{ localStorage.setItem(LS_BACKUP, now.toISOString()); }catch(e){} S.msg = {t:'Back-up gemaakt: ' + name}; render(); };
+  const done = () => { try{ localStorage.setItem(LS_BACKUP, data.gemaakt); }catch(e){} toast('Back-up gemaakt: ' + name); render(); };
   try{
     if(navigator.canShare && navigator.canShare({files:[file]})){
       await navigator.share({files:[file], title:'NmG Oefenen back-up'});
@@ -355,19 +392,22 @@ async function makeBackup(){
   setTimeout(() => URL.revokeObjectURL(url), 10000);
   done();
 }
+// Je kunt in één keer meerdere back-upbestanden kiezen; de app zet ze op een rij, nieuwste bovenaan.
 $file.addEventListener('change', async () => {
-  const f = $file.files && $file.files[0]; $file.value = '';
-  if(!f) return;
-  try{
-    const data = JSON.parse(await f.text());
-    if(!data || data.app !== 'nmg-oefenen' || !Array.isArray(data.lijsten)) throw new Error('fout');
-    const lists = data.lijsten.filter(l => l && l.id).map(l => normList(l.id, l));
-    S.pendingImport = {lists, gemaakt:data.gemaakt, instellingen:data.instellingen, dagen:data.dagen};
-    S.confirm = 'import'; S.view = 'home'; S.msg = null;
-  }catch(e){
-    S.msg = {t:'Dit bestand is geen back-up van NmG Oefenen.', err:true};
+  const files = [...($file.files || [])]; $file.value = '';
+  if(!files.length) return;
+  const gevonden = [], fout = [];
+  for(const f of files){
+    try{
+      const data = JSON.parse(await f.text());
+      if(!data || data.app !== 'nmg-oefenen' || !Array.isArray(data.lijsten)) throw new Error('fout');
+      gevonden.push({id:mkId(), naam:f.name, data});
+    }catch(e){ fout.push(f.name); }
   }
-  render(); window.scrollTo(0, document.body.scrollHeight);
+  gevonden.sort((x, y) => String(y.data.gemaakt || '').localeCompare(String(x.data.gemaakt || '')));
+  S.bestanden = gevonden; S.confirm = null; S.view = 'restore';
+  if(fout.length) toast((fout.length === 1 ? '"' + fout[0] + '" is' : fout.length + ' bestanden zijn') + ' geen back-up van NmG Oefenen.', true);
+  render();
 });
 
 /* ---------- weergave ---------- */
@@ -442,6 +482,7 @@ function msgHtml(){
 function view(){
   if(S.view === 'list' && S.lists.has(S.listId)) return viewList();
   if(S.view === 'setup') return viewSetup();
+  if(S.view === 'restore') return viewRestore();
   if(S.view === 'quiz' && S.quiz) return viewQuiz();
   if(S.view === 'done' && S.quiz) return viewDone();
   return viewHome();
@@ -457,19 +498,28 @@ function newListForm(){
   </div></form>`;
 }
 function backupPanel(hasLists){
-  let h = `<section class="panel"><h2>Back-up</h2>`;
-  if(S.confirm === 'import' && S.pendingImport){
-    const p = S.pendingImport;
-    const nWords = p.lists.reduce((n, l) => n + l.words.length, 0);
-    const overlap = p.lists.filter(l => S.lists.has(l.id)).length;
-    h += `<div class="confirm ok"><span>Back-up${p.gemaakt ? ' van ' + esc(fmtDate(p.gemaakt)) : ''} terugzetten: ${plural(p.lists.length,'lijst','lijsten')} met ${plural(nWords,'woord','woorden')}.${overlap ? ' ' + plural(overlap,'lijst','lijsten') + ' die je al hebt, ' + (overlap===1?'wordt':'worden') + ' vervangen door de versie uit de back-up.' : ''} Je andere lijsten blijven staan.</span>
-      <div class="row"><button class="btn sm primary" data-a="import-yes">Terugzetten</button><button class="btn sm" data-a="import-no">Annuleren</button></div></div>`;
-  } else {
-    const lb = lastBackup();
-    h += `<p class="muted small">Je lijsten staan alleen op dit apparaat. Maak af en toe een back-up en bewaar die bijvoorbeeld in Bestanden of iCloud Drive. ${hasLists ? (lb ? 'Laatste back-up: ' + esc(fmtDate(lb)) + '.' : 'Je hebt nog geen back-up gemaakt.') : ''}</p>
-      <div class="row">${hasLists ? '<button class="btn" data-a="backup">Back-up maken</button>' : ''}<button class="btn" data-a="restore">Back-up terugzetten</button></div>`;
-  }
-  return h + `</section>`;
+  const lb = lastBackup();
+  return `<section class="panel"><h2>Back-up</h2>
+    <p class="muted small">Je lijsten staan alleen op dit apparaat. Maak af en toe een back-up en bewaar die in Bestanden of iCloud Drive. De app bewaart daarnaast zelf elke dag een herstelpunt.${hasLists ? (lb ? ' Laatste back-up: ' + esc(fmtDate(lb)) + '.' : ' Je hebt nog geen back-up gemaakt.') : ''}</p>
+    <div class="row">${hasLists ? '<button class="btn" data-a="backup">Back-up maken</button>' : ''}<button class="btn" data-a="restore-open">Terugzetten…</button></div></section>`;
+}
+function puntRij(kind, id, titel, sub, data){
+  const ask = S.confirm === kind + ':' + id;
+  return `<div class="hp${ask ? ' ask' : ''}"><div class="txt"><b>${esc(titel)}</b><p class="muted small">${esc(sub)}</p><p class="muted small">${esc(samenvatting(data))}</p></div>
+    ${ask ? `<div class="confirm ok" style="width:100%"><span>Alles terugzetten naar deze versie? Je huidige lijsten worden vervangen. De app maakt eerst een herstelpunt, zodat je dit ongedaan kunt maken.</span><div class="row"><button class="btn sm primary" data-a="restore-yes" data-k="${kind}" data-id="${esc(id)}">Ja, terugzetten</button><button class="btn sm" data-a="confirm-no">Annuleren</button></div></div>`
+          : `<button class="btn sm" data-a="restore-ask" data-k="${kind}" data-id="${esc(id)}">Zet terug</button>`}</div>`;
+}
+function viewRestore(){
+  const hp = herstelpunten();
+  let h = `<div class="row"><button class="btn ghost" data-a="home">‹ Lijsten</button></div><header><h1>Terugzetten</h1><p class="muted">Kies de versie die je terug wilt. Nieuwste staat bovenaan.</p></header>` + msgHtml();
+  h += `<section class="panel"><h2>Uit een back-upbestand</h2>
+    <p class="muted small">Tik op de knop en kies in Bestanden je back-ups. Wil je kunnen vergelijken? Tik daar rechtsboven op <b>Selecteer</b> en kies meerdere bestanden tegelijk.</p>
+    <div class="row"><button class="btn primary" data-a="restore-file">Kies back-upbestanden</button></div>
+    ${S.bestanden && S.bestanden.length ? `<div class="hps">` + S.bestanden.map(b => puntRij('file', b.id, b.data.gemaakt ? fmtTijd(b.data.gemaakt) : b.naam, b.naam, b.data)).join('') + `</div>` : ''}</section>`;
+  h += `<section class="panel"><h2>Herstelpunten op dit apparaat</h2>
+    <p class="muted small">De app bewaart elke dag vanzelf een kopie, en ook vlak voor het terugzetten of verwijderen van een lijst. De laatste ${HP_MAX} blijven bewaard.</p>
+    ${hp.length ? `<div class="hps">` + hp.map(p => puntRij('hp', p.id, fmtTijd(p.data.gemaakt), p.reden, p.data)).join('') + `</div>` : '<p class="muted">Nog geen herstelpunten.</p>'}</section>`;
+  return h;
 }
 /* ---------- Pip: het figuurtje dat laat zien hoe het gaat ---------- */
 function pipSvg(m){
@@ -538,7 +588,7 @@ function settingsPanel(){
   return `<section class="panel"><h2>Instellingen</h2>
     <div><p><b>Opfrissen na</b></p><p class="muted small">Een woord dat je kent, wordt oranje als je het zo lang niet hebt geoefend. Zo zie je wat je moet herhalen om alles groen te houden.</p></div>
     <div class="chips">${HERHAAL.map(([d, t]) => `<button class="chip" data-a="herhaal" data-v="${d}" aria-pressed="${SET.herhaal === d}">${t}</button>`).join('')}</div>
-    <p class="muted small">Versie ${APP_VERSIE}</p></section>`;
+    <p class="muted small">App bijgewerkt op ${esc(fmtDate(BIJGEWERKT + 'T12:00:00'))}</p></section>`;
 }
 function listCard(l){
   const lc = counts(l.words), d = daysSince(lastPracticed(l));
@@ -815,12 +865,13 @@ $app.addEventListener('click', e => {
       break;
     }
     case 'backup': makeBackup(); return;
-    case 'restore': $file.click(); return;
-    case 'import-no': S.pendingImport = null; S.confirm = null; break;
-    case 'import-yes': {
-      const p = S.pendingImport;
-      if(p){ for(const nl of p.lists) S.lists.set(nl.id, nl); save(); if(p.instellingen && typeof p.instellingen.herhaal === 'number'){ SET.herhaal = p.instellingen.herhaal; saveSettings(); } if(p.dagen && typeof p.dagen === 'object'){ for(const [k, v] of Object.entries(p.dagen)) if(/^\d{4}-\d\d-\d\d$/.test(k)) DAGEN[k] = Math.max(DAGEN[k] || 0, +v || 0); saveDagen(); } S.msg = {t:plural(p.lists.length,'lijst','lijsten') + ' teruggezet.'}; }
-      S.pendingImport = null; S.confirm = null; window.scrollTo(0,0); break;
+    case 'restore-open': S.view = 'restore'; S.confirm = null; S.msg = null; window.scrollTo(0,0); break;
+    case 'restore-file': $file.click(); return;
+    case 'restore-ask': S.confirm = b.dataset.k + ':' + id; break;
+    case 'restore-yes': {
+      const bron = b.dataset.k === 'file' ? (S.bestanden || []).find(x => x.id === id) : herstelpunten().find(x => x.id === id);
+      if(bron){ zetTerug(bron.data); S.view = 'home'; S.bestanden = null; toast('Teruggezet naar ' + fmtTijd(bron.data.gemaakt) + '.'); window.scrollTo(0,0); }
+      S.confirm = null; break;
     }
     case 'open': S.view = 'list'; S.listId = id; S.confirm = null; S.editWord = null; S.rename = false; S.wordFilter = 'alle'; S.msg = null; window.scrollTo(0,0); break;
     case 'rename': S.rename = true; render({focus:'rn-name'}); return;
@@ -865,7 +916,7 @@ $app.addEventListener('click', e => {
     case 'confirm-yes': {
       if(!l) break;
       if(S.confirm === 'reset'){ for(const w of l.words){ w.goed = 0; w.fout = 0; w.reeks = 0; w.laatst = null; } save(); S.msg = {t:'De voortgang van deze lijst staat weer op nul.'}; }
-      else if(S.confirm === 'list'){ S.lists.delete(l.id); save(); S.setup.sel.delete(l.id); S.view = 'home'; S.msg = {t:'Lijst verwijderd.'}; }
+      else if(S.confirm === 'list'){ maakHerstelpunt('Voor verwijderen van "' + l.name + '"'); S.lists.delete(l.id); save(); S.setup.sel.delete(l.id); S.view = 'home'; S.msg = {t:'Lijst verwijderd.'}; }
       else if(S.confirm && S.confirm.startsWith('word:')){ const wid = S.confirm.slice(5); l.words = l.words.filter(w => w.id !== wid); save(); }
       S.confirm = null; break;
     }
@@ -970,6 +1021,7 @@ document.addEventListener('keydown', e => {
 });
 
 load();
+dagelijksHerstelpunt();
 render();
 
 // Offline werken: de app zelf wordt op het apparaat bewaard.
